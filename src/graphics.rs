@@ -78,28 +78,17 @@ impl Buffer {
             .line(Line::new(triangle.c, triangle.a), color)
     }
 
-    pub fn rect(mut self, rect: Rect, color: Color) -> Self {
+    pub fn rect(self, rect: Rect, color: Color) -> Self {
         let p0 = rect.a;
         let p1 = Vec2::new(rect.a.x, rect.b.y);
         let p2 = rect.b;
         let p3 = Vec2::new(rect.b.x, rect.a.y);
 
-        // self.line(Line::new(p0, p1), 0x0000FF)
-        //     .line(Line::new(p1, p2), 0x00FF00)
-        //     .line(Line::new(p2, p3), 0xFF0000)
-        //     .line(Line::new(p3, p0), 0xFFFFFF)
-        //     .line(Line::new(rect.a, rect.b), 0xbbFFbb)
-
-        println!("\np0->p1");
-        self = self.line(Line::new(p0, p1), 0x0000FF);
-        println!("\np1->p2");
-        self = self.line(Line::new(p1, p2), 0x00FF00);
-        println!("\np2->p3");
-        self = self.line(Line::new(p2, p3), 0xFF0000);
-        println!("\np3->p0");
-        self = self.line(Line::new(p3, p0), 0xFFFFFF);
-        println!("\nA->B");
-        self.line(Line::new(rect.a, rect.b), 0xbbFFbb)
+        self.line(Line::new(p0, p1), color)
+            .line(Line::new(p1, p2), color)
+            .line(Line::new(p2, p3), color)
+            .line(Line::new(p3, p0), color)
+            .line(Line::new(rect.a, rect.b), color)
     }
 
     pub fn shape(mut self, shape: Shape, options: ShapeDrawOptions) -> Self {

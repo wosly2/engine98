@@ -17,7 +17,7 @@ fn main() {
     let mut buffer = Buffer::new(WIDTH, HEIGHT);
 
     let mut window = Window::new(
-        "ploob",
+        "test",
         WIDTH,
         HEIGHT,
         WindowOptions {
