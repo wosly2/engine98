@@ -1,4 +1,4 @@
-use std::ops::*;
+use std::{fmt, ops::*};
 
 use new_macro::New;
 
@@ -55,40 +55,55 @@ impl Vec2 {
     pub const LEFT: Self = Self { x: -1., y: 0. };
     pub const RIGHT: Self = Self { x: 1., y: 0. };
 
-    fn scale(self, scalar: Scalar) -> Self {
+    pub fn double(scalar: Scalar) -> Self {
+        Self {
+            x: scalar,
+            y: scalar,
+        }
+    }
+
+    pub fn scale(self, scalar: Scalar) -> Self {
         Self {
             x: self.x * scalar,
             y: self.y * scalar,
         }
     }
 
-    fn add(self, other: Self) -> Self {
+    pub fn add(self, other: Self) -> Self {
         Self {
             x: self.x + other.x,
             y: self.y + other.y,
         }
     }
 
-    fn sub(self, other: Self) -> Self {
+    pub fn sub(self, other: Self) -> Self {
         Self {
             x: self.x - other.x,
             y: self.y - other.y,
         }
     }
 
-    fn negative(self) -> Self {
+    pub fn negative(self) -> Self {
         Self {
             x: -self.x,
             y: -self.y,
         }
     }
 
-    fn transform_by(self: Self, other: Mat2) -> Self {
+    pub fn transform_by(self: Self, other: Mat2) -> Self {
         (other.ihat * self.x) + (other.jhat * self.y)
     }
 
     pub fn dot(self: Self, other: Self) -> Scalar {
         (self.x * other.x) + (self.y * other.y)
+    }
+}
+
+// --- Vec2 pretty print ---
+
+impl fmt::Display for Vec2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
     }
 }
 
@@ -168,6 +183,18 @@ impl Mat2 {
     }
 }
 
+// --- Mat2 pretty print ---
+
+impl fmt::Display for Mat2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "[{} {}  {} {}]",
+            self.ihat.x, self.ihat.y, self.jhat.x, self.jhat.y
+        )
+    }
+}
+
 // --- Mat2 op overloads ---
 
 impl Mul<Mat2> for Mat2 {
@@ -196,7 +223,51 @@ pub struct Vec3 {
 }
 
 impl Vec3 {
-    fn scale(self, scalar: Scalar) -> Self {
+    pub const ZERO: Self = Self {
+        x: 0.,
+        y: 0.,
+        z: 0.,
+    };
+    pub const UP: Self = Self {
+        x: 0.,
+        y: 0.,
+        z: 1.,
+    };
+    pub const DOWN: Self = Self {
+        x: 0.,
+        y: 0.,
+        z: -1.,
+    };
+    pub const RIGHT_X: Self = Self {
+        x: 1.,
+        y: 0.,
+        z: 0.,
+    };
+    pub const LEFT_X: Self = Self {
+        x: -1.,
+        y: 0.,
+        z: 0.,
+    };
+    pub const RIGHT_Y: Self = Self {
+        x: 0.,
+        y: 1.,
+        z: 0.,
+    };
+    pub const LEFT_Y: Self = Self {
+        x: 0.,
+        y: -1.,
+        z: 0.,
+    };
+
+    pub fn triple(scalar: Scalar) -> Self {
+        Self {
+            x: scalar,
+            y: scalar,
+            z: scalar,
+        }
+    }
+
+    pub fn scale(self, scalar: Scalar) -> Self {
         Self {
             x: self.x * scalar,
             y: self.y * scalar,
@@ -204,7 +275,7 @@ impl Vec3 {
         }
     }
 
-    fn add(self, other: Self) -> Self {
+    pub fn add(self, other: Self) -> Self {
         Self {
             x: self.x + other.x,
             y: self.y + other.y,
@@ -212,7 +283,7 @@ impl Vec3 {
         }
     }
 
-    fn sub(self, other: Self) -> Self {
+    pub fn sub(self, other: Self) -> Self {
         Self {
             x: self.x - other.x,
             y: self.y - other.y,
@@ -220,7 +291,7 @@ impl Vec3 {
         }
     }
 
-    fn negative(self) -> Self {
+    pub fn negative(self) -> Self {
         Self {
             x: -self.x,
             y: -self.y,
@@ -228,12 +299,20 @@ impl Vec3 {
         }
     }
 
-    fn transform_by(self: Self, other: Mat3) -> Self {
+    pub fn transform_by(self: Self, other: Mat3) -> Self {
         (other.ihat * self.x) + (other.jhat * self.y) + (other.khat * self.z)
     }
 
     pub fn dot(self: Self, other: Self) -> Scalar {
         (self.x * other.x) + (self.y * other.y) + (self.z * other.z)
+    }
+}
+
+// --- Vec3 pretty print ---
+
+impl fmt::Display for Vec3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({}, {}, {})", self.x, self.y, self.z)
     }
 }
 
@@ -320,6 +399,26 @@ impl Mat3 {
             jhat: other * self.jhat,
             khat: other * self.khat,
         }
+    }
+}
+
+// --- Mat3 pretty print ---
+
+impl fmt::Display for Mat3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "[{} {} {}  {} {} {}  {}, {}, {}]",
+            self.ihat.x,
+            self.ihat.y,
+            self.ihat.z,
+            self.jhat.x,
+            self.jhat.y,
+            self.jhat.z,
+            self.khat.x,
+            self.khat.y,
+            self.khat.z,
+        )
     }
 }
 

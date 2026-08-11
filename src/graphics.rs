@@ -38,36 +38,35 @@ impl Buffer {
         self
     }
 
-    pub fn get(&self, x: usize, y: usize) -> Color {
-        self.inner[(self.height - y) * self.width + x]
+    pub fn on_buffer(&self, x: i32, y: i32) -> Result<(usize, usize), ()> {
+        if 0 > x || x >= self.width as i32 || 0 > y || y >= self.height as i32 {
+            Err(())
+        } else {
+            Ok((x as usize, y as usize))
+        }
     }
 
-    pub fn set(mut self, x: i32, y: i32, color: Color) -> Self {
-        let x = x.clamp(0, self.width as i32) as usize;
-        let y = (self.height as i32 - y).clamp(0, self.height as i32) as usize;
+    pub fn index(&self, x: i32, y: i32) -> Result<usize, ()> {
+        let (x, y) = self.on_buffer(x, y)?;
+        Ok((self.height - 1 - y) * self.width + x)
+    }
 
-        self.inner[y * self.width + x] = color;
-        self
+    pub fn get(&self, x: i32, y: i32) -> Result<Color, ()> {
+        Ok(self.inner[self.index(x, y)?])
+    }
+
+    pub fn set(mut self, x: i32, y: i32, color: Color) -> Result<Self, ()> {
+        let index = self.index(x, y)?;
+        self.inner[index] = color;
+        Ok(self)
     }
 
     pub fn line(mut self, line: Line, color: Color) -> Self {
-        let (starting_x, sx, sy, y_values) = line_values(line);
-
-        println!("starting x: {starting_x}");
-        println!("y values: {y_values:?}");
-
-        // draw rightward
-        for i in 0..y_values.len() {
-            let x = starting_x + sx * i as i32;
-
-            // draw vertically
-            let mut y = y_values[i].0;
-
-            for _ in 0..(y_values[i].1.abs()) {
-                self = self.set(x, y, color);
-                y += sy;
-            }
-        }
+        over_line(line, |x, y| {
+            if let Ok(updated) = self.clone().set(x, y, color) {
+                self = updated;
+            };
+        });
 
         self
     }
@@ -111,9 +110,10 @@ impl Buffer {
     }
 }
 
-fn line_values(line: Line) -> (i32, i32, i32, Vec<(i32, i32)>) {
-    let mut y_values = Vec::new();
-
+pub fn over_line<F>(line: Line, mut f: F)
+where
+    F: FnMut(i32, i32),
+{
     let (x0, y0, x1, y1) = (
         line.a.x as i32,
         line.a.y as i32,
@@ -122,7 +122,6 @@ fn line_values(line: Line) -> (i32, i32, i32, Vec<(i32, i32)>) {
     );
 
     let (mut x, mut y) = (x0, y0);
-    let mut previous_x = x + 1; // any value other than x, so first check works
 
     let dx = (x1 - x0).abs();
     let sx = if x0 < x1 { 1 } else { -1 };
@@ -131,20 +130,8 @@ fn line_values(line: Line) -> (i32, i32, i32, Vec<(i32, i32)>) {
 
     let mut error = dx + dy;
 
-    let mut i = 0;
-
     loop {
-        if previous_x != x {
-            // add this value
-            y_values.push((y, 1));
-
-            previous_x = x;
-
-            i += 1;
-        } else {
-            // update how far it goes down
-            y_values[i - 1].1 += 1;
-        }
+        f(x, y);
 
         let e2 = 2 * error;
         if e2 >= dy {
@@ -162,6 +149,31 @@ fn line_values(line: Line) -> (i32, i32, i32, Vec<(i32, i32)>) {
             y += sy;
         }
     }
+}
 
-    (x0, sx, sy, y_values)
+fn _line_values(line: Line) -> (i32, i32, i32, Vec<(i32, i32)>) {
+    let mut y_values = Vec::new();
+
+    let mut previous_x = line.a.x as i32 + 1; // any value other than x, so first check works
+
+    let mut i = 0;
+
+    over_line(line, |x, y| {
+        if previous_x != x {
+            // add this value
+            y_values.push((y, 1));
+
+            previous_x = x;
+
+            i += 1;
+        } else {
+            // update how far it goes down
+            y_values[i - 1].1 += 1;
+        }
+    });
+
+    let sx = if line.a.x < line.b.x { 1 } else { -1 };
+    let sy = if line.a.y < line.b.y { 1 } else { -1 };
+
+    (line.a.x as i32, sx, sy, y_values)
 }

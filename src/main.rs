@@ -9,7 +9,7 @@ mod graphics;
 mod math;
 
 use graphics::{Buffer, ShapeDrawOptions};
-use math::{Line, Shape, Vec2};
+use math::{Line, Shape, Vec2, Vec3};
 
 use crate::math::{Rect, Triangle};
 
@@ -31,6 +31,14 @@ fn main() {
 
     window.set_target_fps(60);
 
+    let cart_point = Vec3::DOWN;
+
+    println!("3d point: {}", cart_point);
+
+    let projected_point = Vec2::new(cart_point.x / cart_point.z, cart_point.x / cart_point.z);
+
+    println!("projected point: {}", projected_point);
+
     buffer = buffer
         .shape(
             Shape::Line(Line::new(Vec2::new(10., 20.), Vec2::new(300., 100.))),
@@ -49,7 +57,10 @@ fn main() {
             0xFF0000,
         )
         .rect(
-            Rect::new(Vec2::new(300., 200.), Vec2::new(200., 160.)),
+            Rect::new(
+                projected_point,
+                projected_point + (Vec2::RIGHT + Vec2::DOWN) * 10.,
+            ),
             0xFF0FF,
         );
 
