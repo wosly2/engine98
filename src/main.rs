@@ -40,11 +40,11 @@ fn main() {
     println!("projected point: {}", projected_point);
 
     buffer = buffer
-        .shape(
+        .draw_shape(
             Shape::Line(Line::new(Vec2::new(10., 20.), Vec2::new(300., 100.))),
             ShapeDrawOptions::default(),
         )
-        .triangle(
+        .draw_triangle_outline(
             Triangle::new(
                 Vec2::new(10., 30.),
                 Vec2::new(15., 80.),
@@ -52,11 +52,11 @@ fn main() {
             ),
             0x00FF00,
         )
-        .line(
+        .draw_line(
             Line::new(Vec2::new(10., 20.), Vec2::new(20., 100.)),
             0xFF0000,
         )
-        .rect(
+        .draw_rect_outline(
             Rect::new(
                 projected_point,
                 projected_point + (Vec2::RIGHT + Vec2::DOWN) * 10.,

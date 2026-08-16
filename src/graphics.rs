@@ -1,27 +1,21 @@
 use crate::math::{Line, Rect, Shape, Triangle, Vec2};
 
+/// Alias for a `u32` in the 0xRRGGBB format
 pub type Color = u32;
 
+/// Data representation of a sized image. `Buffer` contains a list of
+/// pixels stored in a row-major `Vec<Color>`.
+///
+/// `Buffer` implements some basic drawing abilities, such as filling the
+///  length with a `Color` or drawing a `Shape` with `ShapeDrawOptions`.
+///
+/// Most operations on a `Buffer` return a modified clone of the `Buffer`
+/// with the new data, rather than consuming a reference.
 #[derive(Clone)]
 pub struct Buffer {
     pub width: usize,
     pub height: usize,
     pub inner: Vec<Color>,
-}
-
-pub struct ShapeDrawOptions {
-    /// `(Color, Thickness)`
-    pub line: Option<(Color, u32)>,
-    pub fill: Option<Color>,
-}
-
-impl Default for ShapeDrawOptions {
-    fn default() -> Self {
-        Self {
-            line: Some((0xFFFFFF, 1)),
-            fill: None,
-        }
-    }
 }
 
 impl Buffer {
@@ -33,35 +27,43 @@ impl Buffer {
         }
     }
 
+    /// Set every value in a `Buffer` to a given `Color`
     pub fn fill(mut self, color: Color) -> Self {
         self.inner = vec![color; self.width * self.height];
         self
     }
 
-    pub fn on_buffer(&self, x: i32, y: i32) -> Result<(usize, usize), ()> {
-        if 0 > x || x >= self.width as i32 || 0 > y || y >= self.height as i32 {
-            Err(())
-        } else {
-            Ok((x as usize, y as usize))
-        }
+    /// Check if a given point is within the logical bounds of
+    /// a `Buffer`
+    pub fn is_on_buffer(&self, x: i32, y: i32) -> bool {
+        !(0 > x || x >= self.width as i32 || 0 > y || y >= self.height as i32)
     }
 
+    /// Return the corresponding index for a point that exists in a `Buffer`
     pub fn index(&self, x: i32, y: i32) -> Result<usize, ()> {
-        let (x, y) = self.on_buffer(x, y)?;
+        let (x, y) = self
+            .is_on_buffer(x, y)
+            .then(|| (x as usize, y as usize))
+            .ok_or(())?;
+
         Ok((self.height - 1 - y) * self.width + x)
     }
 
+    /// Return the `Color` of a point that exists in a `Buffer`
     pub fn get(&self, x: i32, y: i32) -> Result<Color, ()> {
         Ok(self.inner[self.index(x, y)?])
     }
 
+    /// Set the `Color` of a point that exists inside a `Buffer`.
     pub fn set(mut self, x: i32, y: i32, color: Color) -> Result<Self, ()> {
         let index = self.index(x, y)?;
         self.inner[index] = color;
         Ok(self)
     }
 
-    pub fn line(mut self, line: Line, color: Color) -> Self {
+    /// Draw a `Line` with a `Color` onto a `Buffer`. If a point along
+    /// the `Line` does not exist in the `Buffer`, it will not be drawn
+    pub fn draw_line(mut self, line: Line, color: Color) -> Self {
         over_line(line, |x, y| {
             if let Ok(updated) = self.clone().set(x, y, color) {
                 self = updated;
@@ -71,37 +73,40 @@ impl Buffer {
         self
     }
 
-    pub fn triangle(self, triangle: Triangle, color: Color) -> Self {
-        self.line(Line::new(triangle.a, triangle.b), color)
-            .line(Line::new(triangle.b, triangle.c), color)
-            .line(Line::new(triangle.c, triangle.a), color)
+    /// Draw the outline of a `Triangle` using `Line`s onto a `Buffer`
+    pub fn draw_triangle_outline(self, triangle: Triangle, color: Color) -> Self {
+        self.draw_line(Line::new(triangle.a, triangle.b), color)
+            .draw_line(Line::new(triangle.b, triangle.c), color)
+            .draw_line(Line::new(triangle.c, triangle.a), color)
     }
 
-    pub fn rect(self, rect: Rect, color: Color) -> Self {
+    /// Draw the outline of a `Rect` using `Line`s onto a `Buffer`
+    pub fn draw_rect_outline(self, rect: Rect, color: Color) -> Self {
         let p0 = rect.a;
         let p1 = Vec2::new(rect.a.x, rect.b.y);
         let p2 = rect.b;
         let p3 = Vec2::new(rect.b.x, rect.a.y);
 
-        self.line(Line::new(p0, p1), color)
-            .line(Line::new(p1, p2), color)
-            .line(Line::new(p2, p3), color)
-            .line(Line::new(p3, p0), color)
-            .line(Line::new(rect.a, rect.b), color)
+        self.draw_line(Line::new(p0, p1), color)
+            .draw_line(Line::new(p1, p2), color)
+            .draw_line(Line::new(p2, p3), color)
+            .draw_line(Line::new(p3, p0), color)
+            .draw_line(Line::new(rect.a, rect.b), color)
     }
 
-    pub fn shape(mut self, shape: Shape, options: ShapeDrawOptions) -> Self {
+    /// Draw a `Shape` onto a `Buffer` using `ShapeDrawOptions` to configure style
+    pub fn draw_shape(mut self, shape: Shape, options: ShapeDrawOptions) -> Self {
         if let Some(_color) = options.fill {
             self = match shape {
                 _ => self,
             };
         }
 
-        if let Some((color, _thickness)) = options.line {
+        if let Some((color, _thickness)) = options.outline {
             self = match shape {
-                Shape::Line(line) => self.line(line, color),
-                Shape::Triangle(triangle) => self.triangle(triangle, color),
-                Shape::Rect(rect) => self.rect(rect, color),
+                Shape::Line(line) => self.draw_line(line, color),
+                Shape::Triangle(triangle) => self.draw_triangle_outline(triangle, color),
+                Shape::Rect(rect) => self.draw_rect_outline(rect, color),
                 _ => self,
             };
         }
@@ -110,6 +115,23 @@ impl Buffer {
     }
 }
 
+/// Configures the style of a drawn `Shape`
+pub struct ShapeDrawOptions {
+    /// `(Color, Thickness)`
+    pub outline: Option<(Color, u32)>,
+    pub fill: Option<Color>,
+}
+
+impl Default for ShapeDrawOptions {
+    fn default() -> Self {
+        Self {
+            outline: Some((0xFFFFFF, 1)),
+            fill: None,
+        }
+    }
+}
+/// Operate a closure over each plotted `(X, Y)` coordinate
+/// over the given line according to Bresenham's algorithm
 pub fn over_line<F>(line: Line, mut f: F)
 where
     F: FnMut(i32, i32),

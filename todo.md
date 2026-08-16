@@ -1,0 +1,5 @@
+- implement Vec4 and Mat4
+- make a spinning cube
+- make an OBJ parser
+- let triangle vertex coordinates control colors
+- add texture sampling
