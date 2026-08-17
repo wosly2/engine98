@@ -1,6 +1,7 @@
-use std::{fmt, ops::*};
+use std::{array, fmt, ops::*};
 
 use new_macro::New;
+use paste::paste;
 
 pub type Scalar = f64;
 
@@ -40,409 +41,310 @@ pub struct Circle {
     pub r: Scalar,
 }
 
-// --- Vec2 ---
+// Vectors!
 
 #[derive(Clone, Copy, PartialEq, New)]
-pub struct Vec2 {
-    pub x: Scalar,
-    pub y: Scalar,
+pub struct Vecn<const N: usize> {
+    pub axes: [Scalar; N],
 }
 
-impl Vec2 {
-    pub const ZERO: Self = Self { x: 0., y: 0. };
-    pub const UP: Self = Self { x: 0., y: 1. };
-    pub const DOWN: Self = Self { x: 0., y: -1. };
-    pub const LEFT: Self = Self { x: -1., y: 0. };
-    pub const RIGHT: Self = Self { x: 1., y: 0. };
+impl<const N: usize> Vecn<N> {
+    const EMPTY: Self = Self { axes: [0.0; N] };
 
-    pub fn double(scalar: Scalar) -> Self {
-        Self {
-            x: scalar,
-            y: scalar,
-        }
+    pub fn splat(scalar: Scalar) -> Self {
+        Self { axes: [scalar; N] }
+    }
+
+    pub fn cartesian(self: Self) -> Self {
+        self.scale(1. / self.axes[N - 2])
     }
 
     pub fn scale(self, scalar: Scalar) -> Self {
         Self {
-            x: self.x * scalar,
-            y: self.y * scalar,
+            axes: self.axes.map(|axis| axis * scalar),
         }
     }
 
     pub fn add(self, other: Self) -> Self {
         Self {
-            x: self.x + other.x,
-            y: self.y + other.y,
+            axes: std::array::from_fn(|i| self.axes[i] + other.axes[i]),
         }
     }
 
     pub fn sub(self, other: Self) -> Self {
         Self {
-            x: self.x - other.x,
-            y: self.y - other.y,
+            axes: std::array::from_fn(|i| self.axes[i] - other.axes[i]),
         }
     }
 
     pub fn negative(self) -> Self {
         Self {
-            x: -self.x,
-            y: -self.y,
+            axes: self.axes.map(|axis| -axis),
         }
     }
 
-    pub fn transform_by(self: Self, other: Mat2) -> Self {
-        (other.ihat * self.x) + (other.jhat * self.y)
+    pub fn transform_by(self: Self, mat: Matn<N>) -> Self {
+        let scaled: [Vecn<N>; N] = std::array::from_fn(|i| mat.bases[i] * self.axes[i]);
+        scaled.iter().fold(Self::EMPTY, |acc, v| acc + *v)
     }
 
-    pub fn dot(self: Self, other: Self) -> Scalar {
-        (self.x * other.x) + (self.y * other.y)
+    pub fn dot(self, other: Self) -> Scalar {
+        let scaled: [Scalar; N] = std::array::from_fn(|i| self.axes[i] * other.axes[i]);
+        scaled.iter().sum()
     }
 }
 
-// --- Vec2 pretty print ---
+impl<const N: usize> Default for Vecn<N> {
+    fn default() -> Self {
+        Self {
+            axes: [Scalar::default(); N],
+        }
+    }
+}
 
-impl fmt::Display for Vec2 {
+impl<const N: usize> fmt::Display for Vecn<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({}, {})", self.x, self.y)
+        write!(
+            f,
+            "({})",
+            self.axes
+                .iter()
+                .map(|axis| axis.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
     }
 }
 
-// --- Vec2 op overloads ---
+impl<const N: usize> Add<Vecn<N>> for Vecn<N> {
+    type Output = Vecn<N>;
 
-impl Add<Vec2> for Vec2 {
-    type Output = Vec2;
-
-    fn add(self, rhs: Vec2) -> Self::Output {
+    fn add(self, rhs: Vecn<N>) -> Self::Output {
         self.add(rhs)
     }
 }
 
-impl Sub<Vec2> for Vec2 {
-    type Output = Vec2;
+impl<const N: usize> Sub<Vecn<N>> for Vecn<N> {
+    type Output = Vecn<N>;
 
-    fn sub(self, rhs: Vec2) -> Self::Output {
+    fn sub(self, rhs: Vecn<N>) -> Self::Output {
         self.sub(rhs)
     }
 }
 
-impl Neg for Vec2 {
-    type Output = Vec2;
+impl<const N: usize> Neg for Vecn<N> {
+    type Output = Vecn<N>;
 
     fn neg(self) -> Self::Output {
         self.negative()
     }
 }
 
-impl Mul<Vec2> for Scalar {
-    type Output = Vec2;
+impl<const N: usize> Mul<Vecn<N>> for Scalar {
+    type Output = Vecn<N>;
 
-    fn mul(self, rhs: Vec2) -> Self::Output {
+    fn mul(self, rhs: Vecn<N>) -> Self::Output {
         rhs.scale(self)
     }
 }
 
-impl Mul<Scalar> for Vec2 {
-    type Output = Vec2;
+impl<const N: usize> Mul<Scalar> for Vecn<N> {
+    type Output = Vecn<N>;
 
     fn mul(self, rhs: Scalar) -> Self::Output {
         self.scale(rhs)
     }
 }
 
-// --- Mat2 ---
+macro_rules! vector_accessors {
+    ($vec_type:ty, $($name:ident: $index:tt),+) => {
+        impl $vec_type {
+            $(
+                pub fn $name(self) -> Scalar {
+                    self.axes[$index]
+                }
+
+                paste! {
+                    pub fn [<set_ $name>](&mut self, scalar: Scalar) {
+                        self.axes[$index] = scalar;
+                    }
+                }
+            )+
+        }
+    };
+}
+
+vector_accessors!(Vec2, x: 0, y: 1);
+vector_accessors!(Vec3, x: 0, y: 1, z: 2);
+vector_accessors!(Vec4, x: 0, y: 1, z: 2, w: 2);
+
+// Matrices!
 
 #[derive(Clone, Copy, PartialEq, New)]
-pub struct Mat2 {
-    pub ihat: Vec2,
-    pub jhat: Vec2,
+pub struct Matn<const N: usize> {
+    pub bases: [Vecn<N>; N],
 }
 
-impl Mat2 {
-    /// ```
-    /// [0 ix, 1 jx
-    ///  2 iy, 3 jy]
-    /// ```
-    pub fn from_list(scalars: [Scalar; 4]) -> Self {
+impl<const N: usize> Matn<N> {
+    pub fn from(repr: [[Scalar; N]; N]) -> Self {
         Self {
-            ihat: Vec2 {
-                x: scalars[0],
-                y: scalars[2],
-            },
-            jhat: Vec2 {
-                x: scalars[1],
-                y: scalars[3],
-            },
+            bases: array::from_fn(|i| Vecn::new(repr[i])),
         }
     }
 
-    fn compose_by(self, other: Self) -> Self {
+    pub fn compose_by(self, other: Self) -> Self {
         Self {
-            ihat: other * self.ihat,
-            jhat: other * self.jhat,
+            bases: array::from_fn(|i| other * self.bases[i]),
+        }
+    }
+
+    pub fn get_id(self) -> Self {
+        Self {
+            bases: array::from_fn(|i| {
+                let mut id = Vecn::splat(0.);
+                id.axes[i] = 1.;
+                id
+            }),
         }
     }
 }
 
-// --- Mat2 pretty print ---
-
-impl fmt::Display for Mat2 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "[{} {}  {} {}]",
-            self.ihat.x, self.ihat.y, self.jhat.x, self.jhat.y
-        )
+impl<const N: usize> Default for Matn<N> {
+    fn default() -> Self {
+        Self {
+            bases: [Vecn::default(); N],
+        }
     }
 }
 
-// --- Mat2 op overloads ---
+// overloading
 
-impl Mul<Mat2> for Mat2 {
-    type Output = Mat2;
+impl<const N: usize> Mul<Matn<N>> for Matn<N> {
+    type Output = Matn<N>;
 
-    fn mul(self, rhs: Mat2) -> Self::Output {
+    fn mul(self, rhs: Matn<N>) -> Self::Output {
         rhs.compose_by(self)
     }
 }
 
-impl Mul<Vec2> for Mat2 {
-    type Output = Vec2;
+impl<const N: usize> Mul<Vecn<N>> for Matn<N> {
+    type Output = Vecn<N>;
 
-    fn mul(self, rhs: Vec2) -> Self::Output {
+    fn mul(self, rhs: Vecn<N>) -> Self::Output {
         rhs.transform_by(self)
     }
 }
 
-// --- Vec3 ---
+macro_rules! matrix_accessors {
+    ($mat_type:ty, $vec_type:ty, $($name:ident: $index:tt),+) => {
+        impl $mat_type {
+            $(
+                pub fn $name(self) -> $vec_type {
+                    self.bases[$index]
+                }
 
-#[derive(Clone, Copy, PartialEq, New)]
-pub struct Vec3 {
-    pub x: Scalar,
-    pub y: Scalar,
-    pub z: Scalar,
+                paste! {
+                    pub fn [<set_ $name>](&mut self, vector: $vec_type) {
+                        self.bases[$index] = vector;
+                    }
+                }
+            )+
+        }
+    };
+}
+
+matrix_accessors!(Mat2, Vec2, i: 0, j: 1);
+matrix_accessors!(Mat3, Vec3, i: 0, j: 1, k: 2);
+matrix_accessors!(Mat4, Vec4, i: 0, j: 1, k: 2, w: 2);
+
+// Type Aliases!
+
+pub type Vec2 = Vecn<2>;
+pub type Vec3 = Vecn<3>;
+pub type Vec4 = Vecn<4>;
+
+pub type Mat2 = Matn<2>;
+pub type Mat3 = Matn<3>;
+pub type Mat4 = Matn<4>;
+
+impl Vec2 {
+    pub const ZERO: Self = Self { axes: [0., 0.] };
+    pub const UP: Self = Self { axes: [0., 1.] };
+    pub const DOWN: Self = Self { axes: [0., -1.] };
+    pub const LEFT: Self = Self { axes: [-1., 0.] };
+    pub const RIGHT: Self = Self { axes: [0., 1.] };
 }
 
 impl Vec3 {
-    pub const ZERO: Self = Self {
-        x: 0.,
-        y: 0.,
-        z: 0.,
-    };
-    pub const UP: Self = Self {
-        x: 0.,
-        y: 0.,
-        z: 1.,
-    };
+    pub const ZERO: Self = Self { axes: [0., 0., 0.] };
+    pub const UP: Self = Self { axes: [0., 0., 1.] };
     pub const DOWN: Self = Self {
-        x: 0.,
-        y: 0.,
-        z: -1.,
+        axes: [0., 0., -1.],
     };
-    pub const RIGHT_X: Self = Self {
-        x: 1.,
-        y: 0.,
-        z: 0.,
-    };
+    pub const RIGHT_X: Self = Self { axes: [1., 0., 0.] };
     pub const LEFT_X: Self = Self {
-        x: -1.,
-        y: 0.,
-        z: 0.,
+        axes: [-1., 0., 0.],
     };
-    pub const RIGHT_Y: Self = Self {
-        x: 0.,
-        y: 1.,
-        z: 0.,
-    };
+    pub const RIGHT_Y: Self = Self { axes: [0., 1., 0.] };
     pub const LEFT_Y: Self = Self {
-        x: 0.,
-        y: -1.,
-        z: 0.,
+        axes: [0., -1., 0.],
     };
 
-    pub fn triple(scalar: Scalar) -> Self {
-        Self {
-            x: scalar,
-            y: scalar,
-            z: scalar,
+    pub fn homog(self: Self, w: Scalar) -> Vec4 {
+        Vec4 {
+            axes: [self.x(), self.y(), self.z(), w],
         }
     }
 
-    pub fn scale(self, scalar: Scalar) -> Self {
-        Self {
-            x: self.x * scalar,
-            y: self.y * scalar,
-            z: self.z * scalar,
-        }
-    }
-
-    pub fn add(self, other: Self) -> Self {
-        Self {
-            x: self.x + other.x,
-            y: self.y + other.y,
-            z: self.z + other.z,
-        }
-    }
-
-    pub fn sub(self, other: Self) -> Self {
-        Self {
-            x: self.x - other.x,
-            y: self.y - other.y,
-            z: self.z - other.z,
-        }
-    }
-
-    pub fn negative(self) -> Self {
-        Self {
-            x: -self.x,
-            y: -self.y,
-            z: -self.z,
-        }
-    }
-
-    pub fn transform_by(self: Self, other: Mat3) -> Self {
-        (other.ihat * self.x) + (other.jhat * self.y) + (other.khat * self.z)
-    }
-
-    pub fn dot(self: Self, other: Self) -> Scalar {
-        (self.x * other.x) + (self.y * other.y) + (self.z * other.z)
-    }
-}
-
-// --- Vec3 pretty print ---
-
-impl fmt::Display for Vec3 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({}, {}, {})", self.x, self.y, self.z)
-    }
-}
-
-// --- Vec3 op overloads ---
-
-impl Add<Vec3> for Vec3 {
-    type Output = Vec3;
-
-    fn add(self, rhs: Vec3) -> Self::Output {
-        self.add(rhs)
-    }
-}
-
-impl Sub<Vec3> for Vec3 {
-    type Output = Vec3;
-
-    fn sub(self, rhs: Vec3) -> Self::Output {
-        self.sub(rhs)
-    }
-}
-
-impl Neg for Vec3 {
-    type Output = Vec3;
-
-    fn neg(self) -> Self::Output {
-        self.negative()
-    }
-}
-
-impl Mul<Vec3> for Scalar {
-    type Output = Vec3;
-
-    fn mul(self, rhs: Vec3) -> Self::Output {
-        rhs.scale(self)
-    }
-}
-
-impl Mul<Scalar> for Vec3 {
-    type Output = Vec3;
-
-    fn mul(self, rhs: Scalar) -> Self::Output {
-        self.scale(rhs)
-    }
-}
-
-// --- Mat3 ---
-
-#[derive(Clone, Copy, PartialEq, New)]
-pub struct Mat3 {
-    pub ihat: Vec3,
-    pub jhat: Vec3,
-    pub khat: Vec3,
-}
-
-impl Mat3 {
-    /// ```
-    /// [0 ix, 1 jx, 2 kx
-    ///  3 iy, 4 jy, 5 ky
-    ///  6 iz, 7 jz, 8 kz]
-    /// ```
-    pub fn from_list(scalars: [Scalar; 9]) -> Self {
-        Self {
-            ihat: Vec3 {
-                x: scalars[0],
-                y: scalars[3],
-                z: scalars[6],
-            },
-            jhat: Vec3 {
-                x: scalars[1],
-                y: scalars[4],
-                z: scalars[7],
-            },
-            khat: Vec3 {
-                x: scalars[2],
-                y: scalars[5],
-                z: scalars[8],
-            },
-        }
-    }
-
-    fn compose_by(self, other: Self) -> Self {
-        Self {
-            ihat: other * self.ihat,
-            jhat: other * self.jhat,
-            khat: other * self.khat,
+    pub fn xy(self: Self) -> Vec2 {
+        Vec2 {
+            axes: [self.x(), self.y()],
         }
     }
 }
 
-// --- Mat3 pretty print ---
-
-impl fmt::Display for Mat3 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "[{} {} {}  {} {} {}  {}, {}, {}]",
-            self.ihat.x,
-            self.ihat.y,
-            self.ihat.z,
-            self.jhat.x,
-            self.jhat.y,
-            self.jhat.z,
-            self.khat.x,
-            self.khat.y,
-            self.khat.z,
-        )
+impl Vec4 {
+    pub fn xyz(self) -> Vec3 {
+        Vec3 {
+            axes: [self.x(), self.y(), self.z()],
+        }
     }
 }
 
-// --- Mat3 op overloads ---
-
-impl Mul<Mat3> for Mat3 {
-    type Output = Mat3;
-
-    fn mul(self, rhs: Mat3) -> Self::Output {
-        rhs.compose_by(self)
+impl Mat4 {
+    pub fn translate(t: Vec3) -> Mat4 {
+        Mat4::from([
+            [1., 0., 0., t.x()],
+            [0., 1., 0., t.y()],
+            [0., 0., 1., t.z()],
+            [0., 0., 0., 1.0],
+        ])
     }
-}
 
-impl Mul<Vec3> for Mat3 {
-    type Output = Vec3;
-
-    fn mul(self, rhs: Vec3) -> Self::Output {
-        rhs.transform_by(self)
+    pub fn rotate_x(alpha: Scalar) -> Mat4 {
+        Mat4::from([
+            [1., 0., 0., 0.],
+            [0., alpha.cos(), -alpha.sin(), 0.],
+            [0., alpha.sin(), alpha.cos(), 0.],
+            [0., 0., 0., 1.],
+        ])
     }
-}
 
-// --- Transform3D ---
+    pub fn rotate_y(beta: Scalar) -> Mat4 {
+        Mat4::from([
+            [beta.cos(), 0., beta.sin(), 0.],
+            [0., 1., 0., 0.],
+            [-beta.sin(), 0., beta.cos(), 0.],
+            [0., 0., 0., 1.],
+        ])
+    }
 
-pub struct Transform3D {
-    pub basis: Mat3,
-    pub translation: Vec3,
+    pub fn rotate_z(gamma: Scalar) -> Mat4 {
+        Mat4::from([
+            [gamma.cos(), -gamma.sin(), 0., 0.],
+            [gamma.sin(), gamma.cos(), 0., 0.],
+            [0., 0., 1., 0.],
+            [0., 0., 0., 1.],
+        ])
+    }
 }

@@ -1,4 +1,4 @@
-use crate::math::{Line, Rect, Shape, Triangle, Vec2};
+use crate::math::{Line, Mat4, Rect, Scalar, Shape, Triangle, Vec2};
 
 /// Alias for a `u32` in the 0xRRGGBB format
 pub type Color = u32;
@@ -83,9 +83,9 @@ impl Buffer {
     /// Draw the outline of a `Rect` using `Line`s onto a `Buffer`
     pub fn draw_rect_outline(self, rect: Rect, color: Color) -> Self {
         let p0 = rect.a;
-        let p1 = Vec2::new(rect.a.x, rect.b.y);
+        let p1 = Vec2::new([rect.a.x(), rect.b.y()]);
         let p2 = rect.b;
-        let p3 = Vec2::new(rect.b.x, rect.a.y);
+        let p3 = Vec2::new([rect.b.x(), rect.a.y()]);
 
         self.draw_line(Line::new(p0, p1), color)
             .draw_line(Line::new(p1, p2), color)
@@ -137,10 +137,10 @@ where
     F: FnMut(i32, i32),
 {
     let (x0, y0, x1, y1) = (
-        line.a.x as i32,
-        line.a.y as i32,
-        line.b.x as i32,
-        line.b.y as i32,
+        line.a.x() as i32,
+        line.a.y() as i32,
+        line.b.x() as i32,
+        line.b.y() as i32,
     );
 
     let (mut x, mut y) = (x0, y0);
@@ -173,10 +173,19 @@ where
     }
 }
 
+pub fn perspective(fov: Scalar) -> Mat4 {
+    Mat4::from([
+        [fov / 2., 0., 0., 0.],
+        [0., fov / 2., 0., 0.],
+        [0., 0., 1., 0.],
+        [0., 0., 0., 1.],
+    ])
+}
+
 fn _line_values(line: Line) -> (i32, i32, i32, Vec<(i32, i32)>) {
     let mut y_values = Vec::new();
 
-    let mut previous_x = line.a.x as i32 + 1; // any value other than x, so first check works
+    let mut previous_x = line.a.x() as i32 + 1; // any value other than x, so first check works
 
     let mut i = 0;
 
@@ -194,8 +203,8 @@ fn _line_values(line: Line) -> (i32, i32, i32, Vec<(i32, i32)>) {
         }
     });
 
-    let sx = if line.a.x < line.b.x { 1 } else { -1 };
-    let sy = if line.a.y < line.b.y { 1 } else { -1 };
+    let sx = if line.a.x() < line.b.x() { 1 } else { -1 };
+    let sy = if line.a.y() < line.b.y() { 1 } else { -1 };
 
-    (line.a.x as i32, sx, sy, y_values)
+    (line.a.x() as i32, sx, sy, y_values)
 }

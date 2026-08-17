@@ -35,25 +35,45 @@ fn main() {
 
     println!("3d point: {}", cart_point);
 
-    let projected_point = Vec2::new(cart_point.x / cart_point.z, cart_point.x / cart_point.z);
+    let projected_point = cart_point.cartesian().xy();
 
     println!("projected point: {}", projected_point);
 
+    let cube_vertices = [
+        (1., 1., 1.),
+        (1., 1., -1.),
+        (1., -1., 1.),
+        (1., -1., -1.),
+        (-1., 1., 1.),
+        (-1., 1., -1.),
+        (-1., -1., 1.),
+        (-1., -1., -1.),
+    ];
+
+    let cube_quads = [
+        (0, 1, 3, 2),
+        (4, 5, 7, 6),
+        (0, 1, 5, 4),
+        (2, 3, 7, 6),
+        (0, 2, 6, 4),
+        (1, 3, 7, 5),
+    ];
+
     buffer = buffer
         .draw_shape(
-            Shape::Line(Line::new(Vec2::new(10., 20.), Vec2::new(300., 100.))),
+            Shape::Line(Line::new(Vec2::new([10., 20.]), Vec2::new([300., 100.]))),
             ShapeDrawOptions::default(),
         )
         .draw_triangle_outline(
             Triangle::new(
-                Vec2::new(10., 30.),
-                Vec2::new(15., 80.),
-                Vec2::new(90., 12.),
+                Vec2::new([10., 30.]),
+                Vec2::new([15., 80.]),
+                Vec2::new([90., 12.]),
             ),
             0x00FF00,
         )
         .draw_line(
-            Line::new(Vec2::new(10., 20.), Vec2::new(20., 100.)),
+            Line::new(Vec2::new([10., 20.]), Vec2::new([20., 100.])),
             0xFF0000,
         )
         .draw_rect_outline(
