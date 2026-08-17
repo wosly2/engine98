@@ -1,6 +1,6 @@
 use std::{array, fmt, ops::*};
 
-pub const INF_CUTOFF: f64 = 9000000000000000000.;
+pub const INF_CUTOFF: f64 = 9e18;
 
 use new_macro::New;
 use paste::paste;
@@ -53,18 +53,38 @@ pub struct Vecn<const N: usize> {
 impl<const N: usize> Vecn<N> {
     const EMPTY: Self = Self { axes: [0.0; N] };
 
+    /// Update every axis in a `Vecn` with an operation
+    pub fn map<F>(&self, f: F) -> Self
+    where
+        F: Fn(Scalar) -> Scalar,
+    {
+        Self {
+            axes: self.axes.map(f),
+        }
+    }
+
+    /// Create a `Vecn` with every value initialized to the same `Scalar`
     pub fn splat(scalar: Scalar) -> Self {
         Self { axes: [scalar; N] }
     }
 
+    /// Perform a `Vecn::scale()` by the inverse of the last axis of a `Vecn`.
+    /// In homogeneous coordinate vectors, this is equivalent to finding the
+    /// cartesian representation of the vector with respect to the homogeneous
+    /// factor (such as `Vec4.w()` or `Vec3.z()`).
+    ///
+    /// If the inverse scalar is `f64::NAN` or greater than or equal to `INF_CUTOFF`,
+    /// it will be reassigned the value `f64::INFINITY`.
     pub fn cartesian(self: Self) -> Self {
-        let attempt = 1. / self.axes[N - 2];
+        let attempt = 1. / self.axes[N - 1];
 
-        self.scale(if attempt >= INF_CUTOFF || attempt.is_nan() {
-            f64::INFINITY
-        } else {
-            attempt
-        })
+        self.scale(
+            if attempt >= INF_CUTOFF || attempt <= -INF_CUTOFF || attempt.is_nan() {
+                f64::INFINITY
+            } else {
+                attempt
+            },
+        )
     }
 
     pub fn scale(self, scalar: Scalar) -> Self {
@@ -194,9 +214,17 @@ pub struct Matn<const N: usize> {
 }
 
 impl<const N: usize> Matn<N> {
+    /// Builds the matrix from the representation in the form
+    /// ```
+    /// [[IX, JX, KX, WX ...N],
+    ///  [IY, JY, KY, WY ...N],
+    ///  [IZ, JZ, KZ, WZ ...N],
+    ///  [IW, JW, KW, WW ...N]...N]
+    /// ```
+    /// for easier implementation and readability.
     pub fn from(repr: [[Scalar; N]; N]) -> Self {
         Self {
-            bases: array::from_fn(|i| Vecn::new(repr[i])),
+            bases: array::from_fn(|col| Vecn::new(array::from_fn(|row| repr[row][col]))),
         }
     }
 

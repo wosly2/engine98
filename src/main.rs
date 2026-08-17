@@ -5,17 +5,14 @@ use std::f64::consts::PI;
 use minifb::{Key, Window, WindowOptions};
 
 const WIDTH: usize = 640;
-const HEIGHT: usize = 360;
+const HEIGHT: usize = 320;
 
 mod graphics;
 mod math;
 
-use graphics::Buffer;
-use math::Vec3;
-
 use crate::{
-    graphics::perspective,
-    math::{Line, Mat4, Triangle, Vec2, Vec4},
+    graphics::{buffer::Buffer, projection::perspective},
+    math::{Line, Mat4, Vec2, Vec3, Vec4},
 };
 
 fn main() {
@@ -56,25 +53,24 @@ fn main() {
         (1, 3, 7, 5),
     ];
 
-    let (mut alpha, mut beta, mut gamma) = (PI, PI / 2., PI / 4.);
-    let translation = Vec3::new([0., 0., -80.]);
     let fov = PI / 3.;
+    let scale = WIDTH as f64 / 2.;
 
     let center = Vec2::new([WIDTH as f64 / 2., HEIGHT as f64 / 2.]);
-    let scale = 100.;
+
+    let mut rot = Vec3::new([PI, PI / 2., PI / 4.]);
+    let trans = Vec3::new([0., 0., -3.]);
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         buffer = buffer.fill(0);
 
-        alpha = (alpha + PI / 100.) % (2. * PI);
-        beta = (beta + PI / 100.) % (2. * PI);
-        gamma = (gamma + PI / 100.) % (2. * PI);
+        rot = rot.map(|ax| (ax + PI / 100.) % (2. * PI));
 
         let matrix = perspective(fov)
-            * Mat4::translate(translation)
-            * Mat4::rotate_x(alpha)
-            * Mat4::rotate_y(beta)
-            * Mat4::rotate_z(gamma);
+            * Mat4::translate(trans)
+            * Mat4::rotate_x(rot.x())
+            * Mat4::rotate_y(rot.y())
+            * Mat4::rotate_z(rot.x());
 
         let cube_vertices_projected: Vec<Vec4> = cube_vertices
             .iter()

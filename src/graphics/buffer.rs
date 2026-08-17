@@ -1,7 +1,8 @@
-use crate::math::{self, Line, Mat4, Rect, Scalar, Shape, Triangle, Vec2};
-
-/// Alias for a `u32` in the 0xRRGGBB format
-pub type Color = u32;
+use crate::graphics::{
+    color::Color,
+    shape::{ShapeDrawOptions, over_line},
+};
+use crate::math::{Line, Rect, Shape, Triangle, Vec2};
 
 /// Data representation of a sized image. `Buffer` contains a list of
 /// pixels stored in a row-major `Vec<Color>`.
@@ -10,7 +11,7 @@ pub type Color = u32;
 ///  length with a `Color` or drawing a `Shape` with `ShapeDrawOptions`.
 ///
 /// Most operations on a `Buffer` return a modified clone of the `Buffer`
-/// with the new data, rather than consuming a reference.
+/// with the new data, rather than consuming a mutable reference.
 #[derive(Clone)]
 pub struct Buffer {
     pub width: usize,
@@ -116,106 +117,4 @@ impl Buffer {
 
         self
     }
-}
-
-/// Configures the style of a drawn `Shape`
-pub struct ShapeDrawOptions {
-    /// `(Color, Thickness)`
-    pub outline: Option<(Color, u32)>,
-    pub fill: Option<Color>,
-}
-
-impl Default for ShapeDrawOptions {
-    fn default() -> Self {
-        Self {
-            outline: Some((0xFFFFFF, 1)),
-            fill: None,
-        }
-    }
-}
-/// Operate a closure over each plotted `(X, Y)` coordinate
-/// over the given line according to Bresenham's algorithm
-pub fn over_line<F>(line: Line, mut f: F) -> Result<(), ()>
-where
-    F: FnMut(i64, i64),
-{
-    if line.a.x().is_infinite()
-        || line.a.y().is_infinite()
-        || line.b.x().is_infinite()
-        || line.b.y().is_infinite()
-    {
-        return Err(());
-    }
-
-    let (x0, y0, x1, y1) = (
-        line.a.x() as i64,
-        line.a.y() as i64,
-        line.b.x() as i64,
-        line.b.y() as i64,
-    );
-
-    let (mut x, mut y) = (x0, y0);
-
-    let dx = (x1 - x0).abs();
-    let sx = if x0 < x1 { 1 } else { -1 };
-    let dy = -(y1 - y0).abs();
-    let sy = if y0 < y1 { 1 } else { -1 };
-
-    let mut error = dx + dy;
-
-    loop {
-        f(x, y);
-
-        let e2 = 2 * error;
-        if e2 >= dy {
-            if x == x1 {
-                break Ok(());
-            }
-            error += dy;
-            x += sx;
-        }
-        if e2 <= dx {
-            if y == y1 {
-                break Ok(());
-            }
-            error += dx;
-            y += sy;
-        }
-    }
-}
-
-pub fn perspective(fov: Scalar) -> Mat4 {
-    Mat4::from([
-        [fov / 2., 0., 0., 0.],
-        [0., fov / 2., 0., 0.],
-        [0., 0., 1., 0.],
-        [0., 0., 1., 0.],
-    ])
-}
-
-fn _line_values(line: Line) -> (i64, i64, i64, Vec<(i64, i64)>) {
-    let mut y_values = Vec::new();
-
-    let mut previous_x = line.a.x() as i64 + 1; // any value other than x, so first check works
-
-    let mut i = 0;
-
-    _ = over_line(line, |x, y| {
-        if previous_x != x {
-            // add this value
-            y_values.push((y, 1));
-
-            previous_x = x;
-
-            i += 1;
-        } else {
-            // update how far it goes down
-            y_values[i - 1].1 += 1;
-        }
-    });
-
-    let sx = if line.a.x() < line.b.x() { 1 } else { -1 };
-    let sy = if line.a.y() < line.b.y() { 1 } else { -1 };
-
-    (line.a.x() as i64, sx, sy, y_values)
 }
