@@ -1,5 +1,7 @@
 use std::{array, fmt, ops::*};
 
+pub const INF_CUTOFF: f64 = 9000000000000000000.;
+
 use new_macro::New;
 use paste::paste;
 
@@ -56,7 +58,13 @@ impl<const N: usize> Vecn<N> {
     }
 
     pub fn cartesian(self: Self) -> Self {
-        self.scale(1. / self.axes[N - 2])
+        let attempt = 1. / self.axes[N - 2];
+
+        self.scale(if attempt >= INF_CUTOFF || attempt.is_nan() {
+            f64::INFINITY
+        } else {
+            attempt
+        })
     }
 
     pub fn scale(self, scalar: Scalar) -> Self {

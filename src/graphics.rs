@@ -1,4 +1,4 @@
-use crate::math::{Line, Mat4, Rect, Scalar, Shape, Triangle, Vec2};
+use crate::math::{self, Line, Mat4, Rect, Scalar, Shape, Triangle, Vec2};
 
 /// Alias for a `u32` in the 0xRRGGBB format
 pub type Color = u32;
@@ -28,19 +28,22 @@ impl Buffer {
     }
 
     /// Set every value in a `Buffer` to a given `Color`
-    pub fn fill(mut self, color: Color) -> Self {
-        self.inner = vec![color; self.width * self.height];
-        self
+    pub fn fill(&self, color: Color) -> Self {
+        Self {
+            width: self.width,
+            height: self.height,
+            inner: vec![color; self.width * self.height],
+        }
     }
 
     /// Check if a given point is within the logical bounds of
     /// a `Buffer`
-    pub fn is_on_buffer(&self, x: i32, y: i32) -> bool {
-        !(0 > x || x >= self.width as i32 || 0 > y || y >= self.height as i32)
+    pub fn is_on_buffer(&self, x: i64, y: i64) -> bool {
+        !(0 > x || x >= self.width as i64 || 0 > y || y >= self.height as i64)
     }
 
     /// Return the corresponding index for a point that exists in a `Buffer`
-    pub fn index(&self, x: i32, y: i32) -> Result<usize, ()> {
+    pub fn index(&self, x: i64, y: i64) -> Result<usize, ()> {
         let (x, y) = self
             .is_on_buffer(x, y)
             .then(|| (x as usize, y as usize))
@@ -50,12 +53,12 @@ impl Buffer {
     }
 
     /// Return the `Color` of a point that exists in a `Buffer`
-    pub fn get(&self, x: i32, y: i32) -> Result<Color, ()> {
+    pub fn get(&self, x: i64, y: i64) -> Result<Color, ()> {
         Ok(self.inner[self.index(x, y)?])
     }
 
     /// Set the `Color` of a point that exists inside a `Buffer`.
-    pub fn set(mut self, x: i32, y: i32, color: Color) -> Result<Self, ()> {
+    pub fn set(mut self, x: i64, y: i64, color: Color) -> Result<Self, ()> {
         let index = self.index(x, y)?;
         self.inner[index] = color;
         Ok(self)
@@ -64,7 +67,7 @@ impl Buffer {
     /// Draw a `Line` with a `Color` onto a `Buffer`. If a point along
     /// the `Line` does not exist in the `Buffer`, it will not be drawn
     pub fn draw_line(mut self, line: Line, color: Color) -> Self {
-        over_line(line, |x, y| {
+        _ = over_line(line, |x, y| {
             if let Ok(updated) = self.clone().set(x, y, color) {
                 self = updated;
             };
@@ -132,15 +135,23 @@ impl Default for ShapeDrawOptions {
 }
 /// Operate a closure over each plotted `(X, Y)` coordinate
 /// over the given line according to Bresenham's algorithm
-pub fn over_line<F>(line: Line, mut f: F)
+pub fn over_line<F>(line: Line, mut f: F) -> Result<(), ()>
 where
-    F: FnMut(i32, i32),
+    F: FnMut(i64, i64),
 {
+    if line.a.x().is_infinite()
+        || line.a.y().is_infinite()
+        || line.b.x().is_infinite()
+        || line.b.y().is_infinite()
+    {
+        return Err(());
+    }
+
     let (x0, y0, x1, y1) = (
-        line.a.x() as i32,
-        line.a.y() as i32,
-        line.b.x() as i32,
-        line.b.y() as i32,
+        line.a.x() as i64,
+        line.a.y() as i64,
+        line.b.x() as i64,
+        line.b.y() as i64,
     );
 
     let (mut x, mut y) = (x0, y0);
@@ -158,14 +169,14 @@ where
         let e2 = 2 * error;
         if e2 >= dy {
             if x == x1 {
-                break;
+                break Ok(());
             }
             error += dy;
             x += sx;
         }
         if e2 <= dx {
             if y == y1 {
-                break;
+                break Ok(());
             }
             error += dx;
             y += sy;
@@ -178,18 +189,18 @@ pub fn perspective(fov: Scalar) -> Mat4 {
         [fov / 2., 0., 0., 0.],
         [0., fov / 2., 0., 0.],
         [0., 0., 1., 0.],
-        [0., 0., 0., 1.],
+        [0., 0., 1., 0.],
     ])
 }
 
-fn _line_values(line: Line) -> (i32, i32, i32, Vec<(i32, i32)>) {
+fn _line_values(line: Line) -> (i64, i64, i64, Vec<(i64, i64)>) {
     let mut y_values = Vec::new();
 
-    let mut previous_x = line.a.x() as i32 + 1; // any value other than x, so first check works
+    let mut previous_x = line.a.x() as i64 + 1; // any value other than x, so first check works
 
     let mut i = 0;
 
-    over_line(line, |x, y| {
+    _ = over_line(line, |x, y| {
         if previous_x != x {
             // add this value
             y_values.push((y, 1));
@@ -206,5 +217,5 @@ fn _line_values(line: Line) -> (i32, i32, i32, Vec<(i32, i32)>) {
     let sx = if line.a.x() < line.b.x() { 1 } else { -1 };
     let sy = if line.a.y() < line.b.y() { 1 } else { -1 };
 
-    (line.a.x() as i32, sx, sy, y_values)
+    (line.a.x() as i64, sx, sy, y_values)
 }
