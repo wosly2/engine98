@@ -2,7 +2,10 @@ use crate::graphics::{
     color::Color,
     shape::{ShapeDrawOptions, over_line},
 };
-use crate::math::{Line, Rect, Shape, Triangle, Vec2};
+use crate::math::{
+    shape::{Line, Rect, Shape, Triangle},
+    vector::Vec2,
+};
 
 /// Data representation of a sized image. `Buffer` contains a list of
 /// pixels stored in a row-major `Vec<Color>`.

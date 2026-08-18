@@ -1,5 +1,5 @@
 use crate::graphics::color::Color;
-use crate::math::Line;
+use crate::math::shape::Line;
 
 /// Configures the style of a drawn `Shape`
 pub struct ShapeDrawOptions {
@@ -16,6 +16,7 @@ impl Default for ShapeDrawOptions {
         }
     }
 }
+
 /// Operate a closure over each plotted `(X, Y)` coordinate
 /// over the given line according to Bresenham's algorithm
 pub fn over_line<F>(line: Line, mut f: F) -> Result<(), ()>
@@ -66,6 +67,8 @@ where
         }
     }
 }
+
+// pub fn over_triangle(triangle: Triangle)
 
 fn _line_values(line: Line) -> (i64, i64, i64, Vec<(i64, i64)>) {
     let mut y_values = Vec::new();

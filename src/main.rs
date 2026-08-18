@@ -1,19 +1,23 @@
 #![allow(dead_code)]
 
-use std::f64::consts::PI;
-
-use minifb::{Key, Window, WindowOptions};
-
-const WIDTH: usize = 640;
-const HEIGHT: usize = 320;
-
 mod graphics;
 mod math;
 
 use crate::{
     graphics::{buffer::Buffer, projection::perspective},
-    math::{Line, Mat4, Vec2, Vec3, Vec4},
+    math::{
+        matrix::Mat4,
+        shape::Line,
+        vector::{Vec2, Vec3, Vec4},
+    },
 };
+
+use minifb::{Key, Window, WindowOptions};
+
+use std::f64::consts::PI;
+
+const WIDTH: usize = 640;
+const HEIGHT: usize = 320;
 
 fn main() {
     let mut buffer = Buffer::new(WIDTH, HEIGHT);

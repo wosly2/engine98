@@ -1,49 +1,11 @@
-use std::{array, fmt, ops::*};
-
-pub const INF_CUTOFF: f64 = 9e18;
+use crate::math::{INF_CUTOFF, scalar::Scalar};
+use std::{
+    fmt,
+    ops::{Add, Mul, Neg, Sub},
+};
 
 use new_macro::New;
 use paste::paste;
-
-pub type Scalar = f64;
-
-// --- Shapes ---
-
-#[derive(Clone, Copy)]
-pub enum Shape {
-    Point(Vec2),
-    Line(Line),
-    Triangle(Triangle),
-    Rect(Rect),
-    Circle(Circle),
-}
-
-#[derive(Clone, Copy, New)]
-pub struct Line {
-    pub a: Vec2,
-    pub b: Vec2,
-}
-
-#[derive(Clone, Copy, New)]
-pub struct Triangle {
-    pub a: Vec2,
-    pub b: Vec2,
-    pub c: Vec2,
-}
-
-#[derive(Clone, Copy, New)]
-pub struct Rect {
-    pub a: Vec2,
-    pub b: Vec2,
-}
-
-#[derive(Clone, Copy, New)]
-pub struct Circle {
-    pub c: Vec2,
-    pub r: Scalar,
-}
-
-// Vectors!
 
 #[derive(Clone, Copy, PartialEq, New)]
 pub struct Vecn<const N: usize> {
@@ -51,7 +13,7 @@ pub struct Vecn<const N: usize> {
 }
 
 impl<const N: usize> Vecn<N> {
-    const EMPTY: Self = Self { axes: [0.0; N] };
+    pub const EMPTY: Self = Self { axes: [0.0; N] };
 
     /// Update every axis in a `Vecn` with an operation
     pub fn map<F>(&self, f: F) -> Self
@@ -109,11 +71,6 @@ impl<const N: usize> Vecn<N> {
         Self {
             axes: self.axes.map(|axis| -axis),
         }
-    }
-
-    pub fn transform_by(self: Self, mat: Matn<N>) -> Self {
-        let scaled: [Vecn<N>; N] = std::array::from_fn(|i| mat.bases[i] * self.axes[i]);
-        scaled.iter().fold(Self::EMPTY, |acc, v| acc + *v)
     }
 
     pub fn dot(self, other: Self) -> Scalar {
@@ -206,102 +163,9 @@ vector_accessors!(Vec2, x: 0, y: 1);
 vector_accessors!(Vec3, x: 0, y: 1, z: 2);
 vector_accessors!(Vec4, x: 0, y: 1, z: 2, w: 2);
 
-// Matrices!
-
-#[derive(Clone, Copy, PartialEq, New)]
-pub struct Matn<const N: usize> {
-    pub bases: [Vecn<N>; N],
-}
-
-impl<const N: usize> Matn<N> {
-    /// Builds the matrix from the representation in the form
-    /// ```
-    /// [[IX, JX, KX, WX ...N],
-    ///  [IY, JY, KY, WY ...N],
-    ///  [IZ, JZ, KZ, WZ ...N],
-    ///  [IW, JW, KW, WW ...N]...N]
-    /// ```
-    /// for easier implementation and readability.
-    pub fn from(repr: [[Scalar; N]; N]) -> Self {
-        Self {
-            bases: array::from_fn(|col| Vecn::new(array::from_fn(|row| repr[row][col]))),
-        }
-    }
-
-    pub fn compose_by(self, other: Self) -> Self {
-        Self {
-            bases: array::from_fn(|i| other * self.bases[i]),
-        }
-    }
-
-    pub fn get_id(self) -> Self {
-        Self {
-            bases: array::from_fn(|i| {
-                let mut id = Vecn::splat(0.);
-                id.axes[i] = 1.;
-                id
-            }),
-        }
-    }
-}
-
-impl<const N: usize> Default for Matn<N> {
-    fn default() -> Self {
-        Self {
-            bases: [Vecn::default(); N],
-        }
-    }
-}
-
-// overloading
-
-impl<const N: usize> Mul<Matn<N>> for Matn<N> {
-    type Output = Matn<N>;
-
-    fn mul(self, rhs: Matn<N>) -> Self::Output {
-        rhs.compose_by(self)
-    }
-}
-
-impl<const N: usize> Mul<Vecn<N>> for Matn<N> {
-    type Output = Vecn<N>;
-
-    fn mul(self, rhs: Vecn<N>) -> Self::Output {
-        rhs.transform_by(self)
-    }
-}
-
-macro_rules! matrix_accessors {
-    ($mat_type:ty, $vec_type:ty, $($name:ident: $index:tt),+) => {
-        impl $mat_type {
-            $(
-                pub fn $name(self) -> $vec_type {
-                    self.bases[$index]
-                }
-
-                paste! {
-                    pub fn [<set_ $name>](&mut self, vector: $vec_type) {
-                        self.bases[$index] = vector;
-                    }
-                }
-            )+
-        }
-    };
-}
-
-matrix_accessors!(Mat2, Vec2, i: 0, j: 1);
-matrix_accessors!(Mat3, Vec3, i: 0, j: 1, k: 2);
-matrix_accessors!(Mat4, Vec4, i: 0, j: 1, k: 2, w: 2);
-
-// Type Aliases!
-
 pub type Vec2 = Vecn<2>;
 pub type Vec3 = Vecn<3>;
 pub type Vec4 = Vecn<4>;
-
-pub type Mat2 = Matn<2>;
-pub type Mat3 = Matn<3>;
-pub type Mat4 = Matn<4>;
 
 impl Vec2 {
     pub const ZERO: Self = Self { axes: [0., 0.] };
@@ -344,43 +208,5 @@ impl Vec4 {
         Vec3 {
             axes: [self.x(), self.y(), self.z()],
         }
-    }
-}
-
-impl Mat4 {
-    pub fn translate(t: Vec3) -> Mat4 {
-        Mat4::from([
-            [1., 0., 0., t.x()],
-            [0., 1., 0., t.y()],
-            [0., 0., 1., t.z()],
-            [0., 0., 0., 1.0],
-        ])
-    }
-
-    pub fn rotate_x(alpha: Scalar) -> Mat4 {
-        Mat4::from([
-            [1., 0., 0., 0.],
-            [0., alpha.cos(), -alpha.sin(), 0.],
-            [0., alpha.sin(), alpha.cos(), 0.],
-            [0., 0., 0., 1.],
-        ])
-    }
-
-    pub fn rotate_y(beta: Scalar) -> Mat4 {
-        Mat4::from([
-            [beta.cos(), 0., beta.sin(), 0.],
-            [0., 1., 0., 0.],
-            [-beta.sin(), 0., beta.cos(), 0.],
-            [0., 0., 0., 1.],
-        ])
-    }
-
-    pub fn rotate_z(gamma: Scalar) -> Mat4 {
-        Mat4::from([
-            [gamma.cos(), -gamma.sin(), 0., 0.],
-            [gamma.sin(), gamma.cos(), 0., 0.],
-            [0., 0., 1., 0.],
-            [0., 0., 0., 1.],
-        ])
     }
 }
