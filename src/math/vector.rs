@@ -25,6 +25,24 @@ impl<const N: usize> Vecn<N> {
         }
     }
 
+    pub fn map_index<F>(&self, f: F) -> Self
+    where
+        F: Fn(Scalar, usize) -> Scalar,
+    {
+        let mut out = [0.0; N];
+        let mut index = 0;
+        for axis in self.axes {
+            out[index] = f(axis, index);
+            index += 1;
+        }
+
+        Vecn { axes: out }
+    }
+
+    pub fn clamp(self: Self, low: Self, high: Self) -> Self {
+        self.map_index(|axis, index| axis.clamp(low.axes[index], high.axes[index]))
+    }
+
     /// Create a `Vecn` with every value initialized to the same `Scalar`
     pub fn splat(scalar: Scalar) -> Self {
         Self { axes: [scalar; N] }
@@ -47,6 +65,10 @@ impl<const N: usize> Vecn<N> {
                 attempt
             },
         )
+    }
+
+    pub fn cartesian_z(self: Self) -> (Self, Scalar) {
+        (self.cartesian(), self.axes[N - 1])
     }
 
     pub fn scale(self, scalar: Scalar) -> Self {

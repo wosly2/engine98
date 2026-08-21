@@ -37,7 +37,7 @@ impl<const N: usize> Matn<N> {
         scaled.iter().fold(Vecn::EMPTY, |acc, v| acc + *v)
     }
 
-    pub fn get_id(self) -> Self {
+    pub fn get_id() -> Self {
         Self {
             bases: array::from_fn(|i| {
                 let mut id = Vecn::splat(0.);
@@ -112,6 +112,16 @@ impl Mat4 {
         ])
     }
 
+    pub fn rotate(xyz: Vec3, order: Order) -> Mat4 {
+        let transforms = order.sort([
+            Mat4::rotate_x(xyz.x()),
+            Mat4::rotate_y(xyz.y()),
+            Mat4::rotate_z(xyz.z()),
+        ]);
+
+        transforms[2] * transforms[1] * transforms[0]
+    }
+
     pub fn rotate_x(alpha: Scalar) -> Mat4 {
         Mat4::from([
             [1., 0., 0., 0.],
@@ -137,5 +147,29 @@ impl Mat4 {
             [0., 0., 1., 0.],
             [0., 0., 0., 1.],
         ])
+    }
+}
+
+// XYZ Ordering
+
+pub enum Order {
+    XYZ,
+    XZY,
+    YXZ,
+    YZX,
+    ZXY,
+    ZYX,
+}
+
+impl Order {
+    fn sort<T: Copy>(self, items: [T; 3]) -> [T; 3] {
+        match self {
+            Order::XYZ => [items[0], items[1], items[2]],
+            Order::XZY => [items[0], items[2], items[1]],
+            Order::YXZ => [items[1], items[0], items[2]],
+            Order::YZX => [items[1], items[2], items[0]],
+            Order::ZXY => [items[2], items[0], items[1]],
+            Order::ZYX => [items[2], items[1], items[0]],
+        }
     }
 }

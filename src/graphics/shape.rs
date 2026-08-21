@@ -1,5 +1,5 @@
 use crate::graphics::color::Color;
-use crate::math::shape::Line;
+use crate::math::shape::{Line2D, Triangle2D};
 
 /// Configures the style of a drawn `Shape`
 pub struct ShapeDrawOptions {
@@ -19,7 +19,7 @@ impl Default for ShapeDrawOptions {
 
 /// Operate a closure over each plotted `(X, Y)` coordinate
 /// over the given line according to Bresenham's algorithm
-pub fn over_line<F>(line: Line, mut f: F) -> Result<(), ()>
+pub fn over_line<F>(line: Line2D, mut f: F) -> Result<(), ()>
 where
     F: FnMut(i64, i64),
 {
@@ -68,9 +68,14 @@ where
     }
 }
 
-// pub fn over_triangle(triangle: Triangle)
+pub fn over_triangle<F>(_triangle: Triangle2D, mut _f: F) -> Result<(), ()>
+where
+    F: FnMut(i64, i64),
+{
+    Ok(())
+}
 
-fn _line_values(line: Line) -> (i64, i64, i64, Vec<(i64, i64)>) {
+fn _line_values(line: Line2D) -> (i64, i64, i64, Vec<(i64, i64)>) {
     let mut y_values = Vec::new();
 
     let mut previous_x = line.a.x() as i64 + 1; // any value other than x, so first check works

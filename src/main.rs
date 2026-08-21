@@ -4,10 +4,11 @@ mod graphics;
 mod math;
 
 use crate::{
-    graphics::{buffer::Buffer, projection::perspective},
+    graphics::image::Image,
     math::{
         matrix::Mat4,
-        shape::Line,
+        projection::perspective,
+        shape::Line2D,
         vector::{Vec2, Vec3, Vec4},
     },
 };
@@ -20,7 +21,7 @@ const WIDTH: usize = 640;
 const HEIGHT: usize = 320;
 
 fn main() {
-    let mut buffer = Buffer::new(WIDTH, HEIGHT);
+    let mut buffer = Image::new(WIDTH, HEIGHT);
 
     let mut window = Window::new(
         "test",
@@ -87,10 +88,10 @@ fn main() {
             let p2 = cube_vertices_projected[cube.2].xyz().xy() * scale + center;
             let p3 = cube_vertices_projected[cube.3].xyz().xy() * scale + center;
             buffer = buffer
-                .draw_line(Line::new(p0, p1), 0xFFFFFF)
-                .draw_line(Line::new(p1, p2), 0xFFFFFF)
-                .draw_line(Line::new(p2, p3), 0xFFFFFF)
-                .draw_line(Line::new(p3, p0), 0xFFFFFF);
+                .draw_line(Line2D::new(p0, p1), 0xFFFFFF)
+                .draw_line(Line2D::new(p1, p2), 0xFFFFFF)
+                .draw_line(Line2D::new(p2, p3), 0xFFFFFF)
+                .draw_line(Line2D::new(p3, p0), 0xFFFFFF);
         }
 
         window
