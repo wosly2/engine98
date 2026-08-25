@@ -1,6 +1,7 @@
 use crate::graphics::shape::LineStepError::{Finished, InfinitePoints};
 use crate::image::color::Color;
 use crate::math::shape::{Line2D, Triangle2D};
+use crate::util;
 
 /// Configures the style of a drawn `Shape`
 pub struct ShapeDrawOptions {
@@ -68,6 +69,19 @@ pub enum LineStepError {
     Finished,
 }
 
+pub fn replace_line_finished<T>(
+    res: Result<T, LineStepError>,
+    replace: T,
+) -> Result<T, LineStepError> {
+    match res {
+        Ok(o) => Ok(o),
+        Err(e) => match e {
+            Finished => Ok(replace),
+            _ => Err(e),
+        },
+    }
+}
+
 impl LineStepper {
     pub fn new(line: Line2D) -> Result<Self, LineStepError> {
         if line.a.x().is_infinite()
@@ -107,7 +121,7 @@ impl LineStepper {
         })
     }
 
-    pub fn finish(&mut self) {
+    fn finish(&mut self) {
         self.finished = true;
         self.stopped_because = Some(Finished)
     }
@@ -151,6 +165,13 @@ impl LineStepper {
     pub fn stop_reason(&self) -> Option<LineStepError> {
         self.stopped_because
     }
+
+    pub fn as_edge(self, axis: Axis2D) -> EdgeStepper {
+        EdgeStepper {
+            stepper: self,
+            axis,
+        }
+    }
 }
 
 impl Iterator for LineStepper {
@@ -159,6 +180,54 @@ impl Iterator for LineStepper {
     fn next(&mut self) -> Option<Self::Item> {
         let xy = self.xy();
         if let Ok(_) = self.step() {
+            Some(xy)
+        } else {
+            None
+        }
+    }
+}
+
+pub enum Axis2D {
+    X,
+    Y,
+}
+
+pub struct EdgeStepper {
+    stepper: LineStepper,
+    pub axis: Axis2D,
+}
+
+impl EdgeStepper {
+    pub fn line_stepper(&self) -> &LineStepper {
+        &self.stepper
+    }
+
+    pub fn xy(&self) -> (i64, i64) {
+        self.stepper.xy()
+    }
+
+    pub fn step(&mut self) -> Result<(), LineStepError> {
+        loop {
+            let current = self.xy();
+            self.stepper.step()?;
+            let next = self.stepper.xy();
+
+            if match self.axis {
+                Axis2D::X => current.0 != next.0,
+                Axis2D::Y => current.1 != next.1,
+            } {
+                break Ok(());
+            }
+        }
+    }
+}
+
+impl Iterator for EdgeStepper {
+    type Item = (i64, i64);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let xy = self.stepper.xy();
+        if let Ok(_) = self.stepper.step() {
             Some(xy)
         } else {
             None
@@ -191,42 +260,40 @@ where
     // the triangle, so that we can determine the proper X run length
     // to fill for each Y offset for the scanline operation
 
-    let (y_start, span_sx, _, span_runs) = raster_line_runs(Line2D::new(sorted[0], sorted[2]))?;
-    let (_, top_sx, _, top_runs) = raster_line_runs(Line2D::new(sorted[0], sorted[1]))?;
-    let (y_mid, bot_sx, _, bot_runs) = raster_line_runs(Line2D::new(sorted[1], sorted[2]))?;
+    let mut long = LineStepper::new(Line2D::new(sorted[0], sorted[2]))?.as_edge(Axis2D::Y);
+    let mut short = LineStepper::new(Line2D::new(sorted[0], sorted[1]))?.as_edge(Axis2D::Y);
 
-    // here we make sure the X values match up! we subtract by one because
-    // TOP->MID and MID->BOT share a point at MID
-    // debug_assert!(span_runs.len() == top_runs.len() + bot_runs.len() - 1);
+    for step in 0..2 {
+        loop {
+            let (long_x, long_y) = long.xy();
+            let (short_x, short_y) = short.xy();
 
-    // we want to take the x value for the entire length of `span_runs`
-    // and invoke the closure over the coordinates it covers
+            assert_eq!(long_y, short_y);
 
-    let mut y_offset = 0;
+            for x in util::bi_range(long_x, short_x) {
+                f(x, long_y);
+            }
 
-    for (span_x_start, span_run) in span_runs {
-        let span_x = span_x_start + (span_sx * span_run);
+            // step!
 
-        let side_x = if y_start + y_offset as i64 <= y_mid {
-            let (side_x_inner, side_run) = top_runs[y_offset];
-            side_x_inner + (top_sx * side_run)
-        } else {
-            // we have to decrease the value here because we're stepping
-            // over a list that is futher along
-            let (side_x_inner, side_run) = bot_runs[y_offset - top_runs.len()];
-            side_x_inner + (bot_sx * side_run)
-        };
+            replace_line_finished(short.step(), ())?;
 
-        for x in span_x..side_x {
-            f(x, y_start + y_offset as i64);
+            if short.line_stepper().is_finished() {
+                break;
+            } else {
+                // we don't want to consume past the length of short1
+                replace_line_finished(long.step(), ())?;
+            }
         }
 
-        y_offset += 1;
+        // switch to short2
+        if step == 0 {
+            short = LineStepper::new(Line2D::new(sorted[1], sorted[2]))?.as_edge(Axis2D::Y);
+        }
     }
 
     Ok(())
 }
-
 
 /// Takes a `Line2D` and builds a compressed data representation of the line's
 /// raster coordinates. `raster_line_runs` returns the following data in tuple form:
