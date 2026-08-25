@@ -1,15 +1,16 @@
 #![allow(dead_code)]
 
 mod graphics;
+mod image;
 mod math;
 
 use crate::{
-    graphics::image::Image,
+    image::Image,
     math::{
         matrix::Mat4,
         projection::perspective,
-        shape::Line2D,
-        vector::{Vec2, Vec3, Vec4},
+        shape::{Line2D, Triangle2D},
+        vector::{Vec2, Vec3, Vec4, Vecn},
     },
 };
 
@@ -49,13 +50,19 @@ fn main() {
         (-1., -1., -1.),
     ];
 
-    let cube_quads = [
-        (0, 1, 3, 2),
-        (4, 5, 7, 6),
-        (0, 1, 5, 4),
-        (2, 3, 7, 6),
-        (0, 2, 6, 4),
-        (1, 3, 7, 5),
+    let cube_triangles = [
+        (0, 1, 3),
+        (0, 3, 2),
+        (4, 5, 7),
+        (4, 7, 6),
+        (0, 1, 5),
+        (0, 5, 4),
+        (2, 3, 7),
+        (2, 7, 6),
+        (0, 2, 6),
+        (0, 6, 4),
+        (1, 3, 7),
+        (1, 7, 5),
     ];
 
     let fov = PI / 3.;
@@ -68,6 +75,15 @@ fn main() {
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         buffer = buffer.fill(0);
+
+        _ = graphics::shape::raster_over_triangle_area_by_edges(
+            Triangle2D::new(
+                Vec2::new([20., 100.]),
+                Vec2::new([90., 50.]),
+                Vec2::new([16., 30.]),
+            ),
+            |x, y| {_ = buffer.set(x, y, 0xBB0000);},
+        );
 
         rot = rot.map(|ax| (ax + PI / 100.) % (2. * PI));
 
@@ -82,20 +98,18 @@ fn main() {
             .map(|(x, y, z)| (matrix * Vec4::new([*x, *y, *z, 1.])).cartesian())
             .collect();
 
-        for cube in cube_quads {
-            let p0 = cube_vertices_projected[cube.0].xyz().xy() * scale + center;
-            let p1 = cube_vertices_projected[cube.1].xyz().xy() * scale + center;
-            let p2 = cube_vertices_projected[cube.2].xyz().xy() * scale + center;
-            let p3 = cube_vertices_projected[cube.3].xyz().xy() * scale + center;
-            buffer = buffer
-                .draw_line(Line2D::new(p0, p1), 0xFFFFFF)
-                .draw_line(Line2D::new(p1, p2), 0xFFFFFF)
-                .draw_line(Line2D::new(p2, p3), 0xFFFFFF)
-                .draw_line(Line2D::new(p3, p0), 0xFFFFFF);
+        for tri in cube_triangles {
+            let p0 = cube_vertices_projected[tri.0].xyz().xy() * scale + center;
+            let p1 = cube_vertices_projected[tri.1].xyz().xy() * scale + center;
+            let p2 = cube_vertices_projected[tri.2].xyz().xy() * scale + center;
+
+            let tri = Triangle2D::new(p0, p1, p2);
+
+            buffer.draw_triangle_outline(tri, 0xFFFFFF);
         }
 
         window
-            .update_with_buffer(&buffer.clone().inner, WIDTH, HEIGHT)
+            .update_with_buffer(&buffer.inner, WIDTH, HEIGHT)
             .unwrap();
     }
 }
