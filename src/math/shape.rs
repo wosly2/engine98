@@ -45,6 +45,37 @@ pub struct Triangle2D {
     pub c: Vec2,
 }
 
+impl Triangle2D {
+    /// This is faster than `area()`. Signed.
+    pub fn double_area(&self) -> Scalar {
+        let i = self.b - self.a;
+        let j = self.c - self.a;
+
+        i.x() * j.y() - i.y() * j.x()
+    }
+
+    // Signed area. Slower than `double_area()`.
+    pub fn area(&self) -> Scalar {
+        self.double_area() / 2.
+    }
+
+    pub fn barycentric_coord(&self, point: Vec2) -> (Scalar, Scalar, Scalar) {
+        self.barycentric_coord_double_area(point, self.double_area())
+    }
+
+    pub fn barycentric_coord_double_area(
+        &self,
+        point: Vec2,
+        double_area: Scalar,
+    ) -> (Scalar, Scalar, Scalar) {
+        (
+            (Triangle2D::new(self.b, self.c, point).double_area() / double_area).abs(),
+            (Triangle2D::new(self.a, self.b, point).double_area() / double_area).abs(),
+            (Triangle2D::new(self.a, self.c, point).double_area() / double_area).abs(),
+        )
+    }
+}
+
 #[derive(Clone, Copy, New)]
 pub struct Rect2D {
     pub a: Vec2,

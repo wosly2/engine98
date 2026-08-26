@@ -7,7 +7,7 @@ use std::{
 use new_macro::New;
 use paste::paste;
 
-#[derive(Clone, Copy, PartialEq, New)]
+#[derive(Clone, Copy, PartialEq, New, Debug)]
 pub struct Vecn<const N: usize> {
     pub axes: [Scalar; N],
 }

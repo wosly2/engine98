@@ -13,7 +13,7 @@ pub struct ShapeDrawOptions {
 impl Default for ShapeDrawOptions {
     fn default() -> Self {
         Self {
-            outline: Some((0xFFFFFF, 1)),
+            outline: Some((0xFFFFFF.into(), 1)),
             fill: None,
         }
     }

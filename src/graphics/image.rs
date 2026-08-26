@@ -7,7 +7,7 @@ use crate::{
     },
 };
 
-impl Image {
+impl Image<Color> {
     /// Draw a `Line` with a `Color` onto an `Image`. If a point along
     /// the `Line` does not exist in the `Image`, it will not be drawn
     pub fn draw_line(&mut self, line: Line2D, color: Color) {

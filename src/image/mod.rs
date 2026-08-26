@@ -1,7 +1,5 @@
 pub mod color;
 
-use crate::image::color::Color;
-
 /// Data representation of a sized image. `Image` contains a list of
 /// pixels stored in a row-major `Vec<Color>`.
 ///
@@ -11,28 +9,24 @@ use crate::image::color::Color;
 /// Most operations on a `Image` return a modified clone of the `Image`
 /// with the new data, rather than consuming a mutable reference.
 #[derive(Clone)]
-pub struct Image {
+pub struct Image<T: Clone + Copy> {
     pub width: usize,
     pub height: usize,
-    pub inner: Vec<Color>,
+    pub inner: Vec<T>,
 }
 
-impl Image {
-    pub fn new(width: usize, height: usize) -> Self {
+impl<T: Clone + Copy> Image<T> {
+    pub fn new(width: usize, height: usize, default: T) -> Self {
         Self {
             width,
             height,
-            inner: vec![0; width * height],
+            inner: vec![default; width * height],
         }
     }
 
-    /// Set every value in an `Image` to a given `Color`
-    pub fn fill(&self, color: Color) -> Self {
-        Self {
-            width: self.width,
-            height: self.height,
-            inner: vec![color; self.width * self.height],
-        }
+    /// Set every value in an `Image` to a given value
+    pub fn fill(&mut self, value: T) {
+        self.inner = vec![value; self.width * self.height];
     }
 
     /// Check if a given point is within the bounds of
@@ -61,16 +55,40 @@ impl Image {
         )
     }
 
-    /// Return the `Color` of a point that exists in an `Image`
-    pub fn get(&self, x: i64, y: i64) -> Result<Color, ()> {
+    /// Return the value of a pixel that exists in an `Image`
+    pub fn get(&self, x: i64, y: i64) -> Result<T, ()> {
         Ok(self.inner[self.index(x, y)?])
     }
 
-    /// Set the `Color` of a point that exists inside an `Image`.
-    pub fn set(&mut self, x: i64, y: i64, color: Color) -> Result<(), ()> {
+    /// Set the value of a point that exists inside an `Image`.
+    pub fn set(&mut self, x: i64, y: i64, value: T) -> Result<(), ()> {
         let index = self.index(x, y)?;
-        self.inner[index] = color;
+        self.inner[index] = value;
 
         Ok(())
+    }
+}
+
+impl<T: PartialOrd + Copy + Clone> Image<T> {
+    /// Updates an existing pixel on the `Image` only when the
+    /// provided value was greater than the existing pixel value.
+    /// Returns a boolean describing whether the provided value
+    /// was greater than the existing.
+    pub fn set_if_greater(&mut self, x: i64, y: i64, value: T) -> Result<bool, ()> {
+        if value > self.get(x, y)? {
+            self.set(x, y, value)?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn set_if_less(&mut self, x: i64, y: i64, value: T) -> Result<bool, ()> {
+        if value < self.get(x, y)? {
+            self.set(x, y, value)?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 }
