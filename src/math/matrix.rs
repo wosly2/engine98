@@ -78,12 +78,12 @@ macro_rules! matrix_accessors {
     ($mat_type:ty, $vec_type:ty, $($name:ident: $index:tt),+) => {
         impl $mat_type {
             $(
-                pub fn $name(self) -> $vec_type {
+                pub const fn $name(self) -> $vec_type {
                     self.bases[$index]
                 }
 
                 paste! {
-                    pub fn [<set_ $name>](&mut self, vector: $vec_type) {
+                    pub const fn [<set_ $name>](&mut self, vector: $vec_type) {
                         self.bases[$index] = vector;
                     }
                 }

@@ -6,21 +6,24 @@ mod math;
 mod util;
 
 use crate::{
-    graphics::math::{bary_as_vec, perspective},
+    graphics::{
+        math::{bary_as_vec, perspective},
+        model::{ConstModel, Model, ModelIterator},
+    },
     image::{Image, color::Color},
     math::{
         matrix::Mat4,
         shape::{Triangle2D, Triangle3D},
-        vector::{Vec2, Vec3, Vec4},
+        vector::{Vec2, Vec3},
     },
 };
 
 use minifb::{Key, Window, WindowOptions};
 
-use std::f64::consts::PI;
+use std::{f64::consts::PI, time};
 
-const WIDTH: usize = 640;
-const HEIGHT: usize = 320;
+const WIDTH: usize = 16 * 50;
+const HEIGHT: usize = 9 * 50;
 
 fn main() {
     let mut color_buffer = Image::<Color>::new(WIDTH, HEIGHT, 0.into());
@@ -42,38 +45,6 @@ fn main() {
 
     window.set_target_fps(60);
 
-    let cube_vertices = [
-        (1., 1., 1.),
-        (1., 1., -1.),
-        (1., -1., 1.),
-        (1., -1., -1.),
-        (-1., 1., 1.),
-        (-1., 1., -1.),
-        (-1., -1., 1.),
-        (-1., -1., -1.),
-    ];
-
-    let cube_triangles = [
-        // top
-        (6, 4, 0),
-        (6, 0, 2),
-        // bottom (reverse winding)
-        (7, 3, 1),
-        (7, 1, 5),
-        //
-        (3, 2, 0),
-        (3, 0, 1),
-        //
-        (1, 0, 4),
-        (1, 4, 5),
-        //
-        (5, 4, 6),
-        (5, 6, 7),
-        //
-        (7, 6, 2),
-        (7, 2, 3),
-    ];
-
     let fov = PI / 3.;
     let scale = WIDTH as f64 / 2.;
 
@@ -82,7 +53,14 @@ fn main() {
     let mut rot = Vec3::new([PI, PI / 3., PI / 8.]);
     let trans = Vec3::new([0., 0., -3.]);
 
+    let cube: Model = ConstModel::CUBE.into();
+
+    let mut frame_time: time::Duration = time::Duration::ZERO;
+    //let frame_time_start: f64;
+
     while window.is_open() && !window.is_key_down(Key::Escape) {
+        let frame_time_start = time::Instant::now();
+
         color_buffer.fill(Color(0));
         depth_buffer.fill(f64::INFINITY);
 
@@ -93,52 +71,68 @@ fn main() {
             * Mat4::translate(trans)
             * Mat4::rotate_x(rot.x())
             * Mat4::rotate_y(rot.y())
-            * Mat4::rotate_z(rot.x());
+            * Mat4::rotate_z(rot.z());
 
-        let cube_vertices_projected: Vec<Vec4> = cube_vertices
-            .iter()
-            .map(|(x, y, z)| (matrix * Vec4::new([*x, *y, *z, 1.])).cartesian())
-            .collect();
+        // let cube_vertices_projected: Vec<Vec4> = cube_vertices
+        //     .iter()
+        //     .map(|vertex| (matrix * Vec3::new(*vertex).homog(1.)).cartesian())
+        //     .collect();
 
-        for triangle in cube_triangles {
-            let tri_proj = Triangle2D::new(
-                cube_vertices_projected[triangle.0].xyz().xy() * scale + center,
-                cube_vertices_projected[triangle.1].xyz().xy() * scale + center,
-                cube_vertices_projected[triangle.2].xyz().xy() * scale + center,
+        let mut cube_projected = matrix * cube.clone();
+        cube_projected.make_cartesian();
+
+        let mut n_triangles = 0;
+
+        for triangle in ModelIterator::from(&cube_projected) {
+            let tri_proj = Triangle3D::new(triangle.0.xyz(), triangle.1.xyz(), triangle.2.xyz());
+
+            let tri_screen = Triangle2D::new(
+                tri_proj.v0.xy() * scale + center,
+                tri_proj.v1.xy() * scale + center,
+                tri_proj.v2.xy() * scale + center,
             );
-            let tri_world = Triangle3D::new(
-                cube_vertices_projected[triangle.0].xyz(),
-                cube_vertices_projected[triangle.1].xyz(),
-                cube_vertices_projected[triangle.2].xyz(),
-            );
 
-            let double_area = tri_proj.double_area();
+            let double_area = tri_screen.double_area();
 
             if double_area > 0. {
                 // does not work when winding is wrong
                 continue;
             }
 
-            let depths = tri_world.z_values().map(|z| 1. / z);
+            let depths = tri_proj.z_values().map(|z| 1. / z);
 
-            _ = graphics::shape::raster_over_triangle_area_by_edges(tri_proj, |x, y| {
-                let bary = tri_proj
-                    .barycentric_coord_double_area(Vec2::new([x as f64, y as f64]), double_area);
+            _ = graphics::shape::raster_over_triangle_area_by_edges(tri_screen, |x, y| {
+                if color_buffer.is_on_image(x, y) {
+                    let bary = tri_screen.barycentric_coord_double_area(
+                        Vec2::new([x as f64, y as f64]),
+                        double_area,
+                    );
 
-                let depth = 1. / bary_as_vec(bary).dot(depths);
+                    let depth = 1. / bary_as_vec(bary).dot(depths);
 
-                if let Ok(greater) = depth_buffer.set_if_less(x, y, depth)
-                    && greater
-                {
-                    _ = color_buffer.set(x, y, Color::vec_norm(bary_as_vec(bary)));
+                    if let Ok(greater) = depth_buffer.set_if_less(x, y, depth)
+                        && greater
+                    {
+                        _ = color_buffer.set(x, y, Color::vec_norm(bary_as_vec(bary)));
+                    }
                 }
             });
 
-            //color_buffer.draw_triangle_outline(tri_proj, Color(0xFFFFFF));
+            color_buffer.draw_triangle_outline(tri_screen, Color(0xFFFFFF));
+
+            n_triangles += 1;
         }
+
+        println!(
+            "FPS: {:<8} TRIANGLES: {:<8}",
+            1. / (frame_time.as_millis() as f64 / 1000.),
+            n_triangles
+        );
 
         window
             .update_with_buffer(Color::as_u32_slice(&color_buffer.inner), WIDTH, HEIGHT)
             .unwrap();
+
+        frame_time = frame_time_start.elapsed();
     }
 }

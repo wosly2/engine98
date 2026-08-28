@@ -4,16 +4,19 @@ use std::{
     ops::{Add, Mul, Neg, Sub},
 };
 
-use new_macro::New;
 use paste::paste;
 
-#[derive(Clone, Copy, PartialEq, New, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Vecn<const N: usize> {
     pub axes: [Scalar; N],
 }
 
 impl<const N: usize> Vecn<N> {
     pub const EMPTY: Self = Self { axes: [0.0; N] };
+
+    pub const fn new(axes: [Scalar; N]) -> Self {
+        Self { axes }
+    }
 
     /// Update every axis in a `Vecn` with an operation
     pub fn map<F>(&self, f: F) -> Self
@@ -44,7 +47,7 @@ impl<const N: usize> Vecn<N> {
     }
 
     /// Create a `Vecn` with every value initialized to the same `Scalar`
-    pub fn splat(scalar: Scalar) -> Self {
+    pub const fn splat(scalar: Scalar) -> Self {
         Self { axes: [scalar; N] }
     }
 
@@ -167,12 +170,12 @@ macro_rules! vector_accessors {
     ($vec_type:ty, $($name:ident: $index:tt),+) => {
         impl $vec_type {
             $(
-                pub fn $name(self) -> Scalar {
+                pub const fn $name(self) -> Scalar {
                     self.axes[$index]
                 }
 
                 paste! {
-                    pub fn [<set_ $name>](&mut self, scalar: Scalar) {
+                    pub const fn [<set_ $name>](&mut self, scalar: Scalar) {
                         self.axes[$index] = scalar;
                     }
                 }
@@ -212,7 +215,7 @@ impl Vec3 {
         axes: [0., -1., 0.],
     };
 
-    pub fn homog(self: Self, w: Scalar) -> Vec4 {
+    pub const fn homog(self: Self, w: Scalar) -> Vec4 {
         Vec4 {
             axes: [self.x(), self.y(), self.z(), w],
         }
