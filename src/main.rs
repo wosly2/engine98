@@ -3,12 +3,13 @@
 mod graphics;
 mod image;
 mod math;
+mod scene;
 mod util;
 
 use crate::{
     graphics::{
         math::{bary_as_vec, perspective},
-        model::{ConstModel, Model, ModelIterator},
+        model::{ConstModel, Model, TriangleIterator},
     },
     image::{Image, color::Color},
     math::{
@@ -83,7 +84,7 @@ fn main() {
 
         let mut n_triangles = 0;
 
-        for triangle in ModelIterator::from(&cube_projected) {
+        for triangle in TriangleIterator::from(&cube_projected) {
             let tri_proj = Triangle3D::new(triangle.0.xyz(), triangle.1.xyz(), triangle.2.xyz());
 
             let tri_screen = Triangle2D::new(
@@ -124,7 +125,9 @@ fn main() {
         }
 
         println!(
-            "FPS: {:<8} TRIANGLES: {:<8}",
+            "->FRAME
+  FPS:       {:<5.2}
+  TRIANGLES: {:<5}\n",
             1. / (frame_time.as_millis() as f64 / 1000.),
             n_triangles
         );
