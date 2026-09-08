@@ -1,13 +1,11 @@
 pub mod color;
+pub mod draw;
 
 /// Data representation of a sized image. `Image` contains a list of
-/// pixels stored in a row-major `Vec<Color>`.
+/// pixels stored in a row-major `Vec<T>`.
 ///
 /// `Image` implements some basic drawing abilities, such as filling the
-///  length with a `Color` or drawing a `Shape` with `ShapeDrawOptions`.
-///
-/// Most operations on a `Image` return a modified clone of the `Image`
-/// with the new data, rather than consuming a mutable reference.
+///  length with a `T` or drawing a `Shape` with `ShapeDrawOptions`.
 #[derive(Clone)]
 pub struct Image<T: Clone + Copy> {
     pub width: usize,

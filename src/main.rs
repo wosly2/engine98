@@ -1,17 +1,16 @@
 #![allow(dead_code)]
 
 mod graphics;
-mod image;
 mod math;
 mod scene;
 mod util;
 
 use crate::{
+    graphics::image::{Image, color::Color},
     graphics::{
         math::{bary_as_vec, perspective},
         model::{ConstModel, Model, TriangleIterator},
     },
-    image::{Image, color::Color},
     math::{
         matrix::Mat4,
         shape::{Triangle2D, Triangle3D},
@@ -49,15 +48,14 @@ fn main() {
     let fov = PI / 3.;
     let scale = WIDTH as f64 / 2.;
 
-    let center = Vec2::new([WIDTH as f64 / 2., HEIGHT as f64 / 2.]);
+    let center: Vec2 = [WIDTH as f64 / 2., HEIGHT as f64 / 2.].into();
 
-    let mut rot = Vec3::new([PI, PI / 3., PI / 8.]);
-    let trans = Vec3::new([0., 0., -3.]);
+    let mut rot: Vec3 = [PI, PI / 3., PI / 8.].into();
+    let trans: Vec3 = [0., 0., -3.].into();
 
     let cube: Model = ConstModel::CUBE.into();
 
     let mut frame_time: time::Duration = time::Duration::ZERO;
-    //let frame_time_start: f64;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let frame_time_start = time::Instant::now();
@@ -126,8 +124,8 @@ fn main() {
 
         println!(
             "->FRAME
-  FPS:       {:<5.2}
-  TRIANGLES: {:<5}\n",
+        FPS:       {:<5.2}
+        TRIANGLES: {:<5}\n",
             1. / (frame_time.as_millis() as f64 / 1000.),
             n_triangles
         );

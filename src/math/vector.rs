@@ -166,6 +166,12 @@ impl<const N: usize> Mul<Scalar> for Vecn<N> {
     }
 }
 
+impl<const N: usize> From<[Scalar; N]> for Vecn<N> {
+    fn from(value: [Scalar; N]) -> Self {
+        Self { axes: value }
+    }
+}
+
 macro_rules! vector_accessors {
     ($vec_type:ty, $($name:ident: $index:tt),+) => {
         impl $vec_type {

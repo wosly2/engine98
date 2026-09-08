@@ -10,7 +10,7 @@ use crate::{
 };
 
 pub struct ConstModel {
-    pub mesh: &'static [[usize; 3]],
+    pub mesh: &'static [[(usize, usize, usize); 3]],
     pub points: &'static [Vec4],
     pub normals: &'static [Vec4],
     pub uvs: &'static [Vec2],
@@ -18,7 +18,7 @@ pub struct ConstModel {
 
 #[derive(Clone)]
 pub struct Model {
-    pub mesh: Vec<[usize; 3]>,
+    pub mesh: Vec<[(usize, usize, usize); 3]>,
     pub points: Vec<Vec4>,
     pub normals: Vec<Vec4>,
     pub uvs: Vec<Vec2>,
@@ -83,9 +83,9 @@ impl<'a> Iterator for TriangleIterator<'a> {
         if self.triangle_index - 1 < self.model.mesh.len() {
             let tup = self.model.mesh[self.triangle_index - 1];
             return Some((
-                self.model.points[tup[0]],
-                self.model.points[tup[1]],
-                self.model.points[tup[2]],
+                self.model.points[tup[0].0],
+                self.model.points[tup[1].0],
+                self.model.points[tup[2].0],
             ));
         } else {
             return None;
@@ -106,12 +106,6 @@ impl Mul<Homog> for Mat4 {
 
     fn mul(self, rhs: Homog) -> Self::Output {
         rhs.0.iter().map(|v| self * (*v).homog(rhs.1)).collect()
-    }
-}
-
-impl From<[f64; 3]> for Vec3 {
-    fn from(value: [f64; 3]) -> Self {
-        Vec3 { axes: value }
     }
 }
 
@@ -144,18 +138,18 @@ impl From<ConstModel> for Model {
 impl ConstModel {
     pub const CUBE: Self = Self {
         mesh: &[
-            [6, 4, 0],
-            [6, 0, 2],
-            [7, 3, 1],
-            [7, 1, 5],
-            [3, 2, 0],
-            [3, 0, 1],
-            [1, 0, 4],
-            [1, 4, 5],
-            [5, 4, 6],
-            [5, 6, 7],
-            [7, 6, 2],
-            [7, 2, 3],
+            [(6, 6, 0), (4, 4, 0), (0, 0, 0)],
+            [(6, 6, 0), (0, 0, 0), (2, 2, 0)],
+            [(7, 7, 0), (3, 3, 0), (1, 1, 0)],
+            [(7, 7, 0), (1, 1, 0), (5, 5, 0)],
+            [(3, 3, 0), (2, 2, 0), (0, 0, 0)],
+            [(3, 3, 0), (0, 0, 0), (1, 1, 0)],
+            [(1, 1, 0), (0, 0, 0), (4, 4, 0)],
+            [(1, 1, 0), (4, 4, 0), (5, 5, 0)],
+            [(5, 5, 0), (4, 4, 0), (6, 6, 0)],
+            [(5, 5, 0), (6, 6, 0), (7, 7, 0)],
+            [(7, 7, 0), (6, 6, 0), (2, 2, 0)],
+            [(7, 7, 0), (2, 2, 0), (3, 3, 0)],
         ],
         points: &[
             Vec3::new([1., 1., 1.]).homog(1.),
@@ -177,6 +171,6 @@ impl ConstModel {
             Vec3::new([-1., -1., 1.]).homog(0.),
             Vec3::new([-1., -1., -1.]).homog(0.),
         ],
-        uvs: &[],
+        uvs: &[Vec2::ZERO],
     };
 }

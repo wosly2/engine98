@@ -1,10 +1,16 @@
 # todo
 
-[desmos implementation](https://www.desmos.com/calculator/9wy96hl8uo)
+## unfinished
 
-- make an OBJ parser
-- add barycentrics
-- let triangle vertex coordinates control colors
-- add a depth buffer
-- - add 3d depth lookup from raster barycentrics
-- add texture sampling
+- [ ] make an OBJ parser
+- [ ] add a depth buffer
+  - [ ] add 3d depth lookup from raster barycentrics
+- [ ] add texture sampling
+- [ ] fix model format to allow using separate indices for vertex, normal, and uv
+- [ ] finish scene system
+  - [ ] add some cool built-in node tech
+
+## finished
+
+- [x] add barycentrics
+- [x] let triangle vertex coordinates control colors

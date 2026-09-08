@@ -26,14 +26,18 @@ impl<const N: usize> Matn<N> {
         }
     }
 
+    /// Performs the matrix composition `AB` where
+    /// `self` represents `B` and `other` represents `A`.
     pub fn compose_by(self, other: Self) -> Self {
         Self {
             bases: array::from_fn(|i| other * self.bases[i]),
         }
     }
 
-    pub fn transform(self: Self, vect: Vecn<N>) -> Vecn<N> {
-        let scaled: [Vecn<N>; N] = std::array::from_fn(|i| self.bases[i] * vect.axes[i]);
+    /// Performs the matrix transformation of the `Vecn<N>` `vector`:
+    /// `Mv` where `self` represents `M` and `vector` represents `v`.
+    pub fn transform(self: Self, vector: Vecn<N>) -> Vecn<N> {
+        let scaled: [Vecn<N>; N] = array::from_fn(|i| self.bases[i] * vector.axes[i]);
         scaled.iter().fold(Vecn::EMPTY, |acc, v| acc + *v)
     }
 
@@ -112,11 +116,11 @@ impl Mat4 {
         ])
     }
 
-    pub fn rotate(xyz: Vec3, order: Order) -> Mat4 {
+    pub fn rotate(rot: Vec3, order: Order) -> Mat4 {
         let transforms = order.sort([
-            Mat4::rotate_x(xyz.x()),
-            Mat4::rotate_y(xyz.y()),
-            Mat4::rotate_z(xyz.z()),
+            Mat4::rotate_x(rot.x()),
+            Mat4::rotate_y(rot.y()),
+            Mat4::rotate_z(rot.z()),
         ]);
 
         transforms[2] * transforms[1] * transforms[0]
@@ -151,7 +155,7 @@ impl Mat4 {
 }
 
 // XYZ Ordering
-
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Order {
     XYZ,
     XZY,

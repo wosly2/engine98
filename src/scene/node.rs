@@ -3,23 +3,34 @@ use std::{any::Any, collections::HashMap};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct NodeID(u64);
 
-pub struct Node {
-    pub value: Box<dyn Any>,
+pub struct Node<T: Any> {
+    pub value: Box<T>,
     pub parent: Option<NodeID>,
     pub children: Vec<NodeID>,
 }
 
+type AnyNode = Node<Box<dyn Any>>;
+
 pub struct NodeTree {
-    pub nodes: HashMap<NodeID, Node>,
+    pub nodes: HashMap<NodeID, AnyNode>,
     next_id: u64,
 }
 
+pub struct NodeContext<'a> {
+    tree: &'a NodeTree,
+    id: NodeID,
+}
+
 impl NodeID {
-    pub fn inside(self, tree: &NodeTree) -> Option<&Node> {
+    pub fn inside(self, tree: &NodeTree) -> Option<&AnyNode> {
         tree.get(self)
     }
 
-    pub fn inside_mut(self, tree: &mut NodeTree) -> Option<&mut Node> {
+    pub fn context<'a>(self, tree: &'a NodeTree) -> NodeContext<'a> {
+        NodeContext { tree, id: self }
+    }
+
+    pub fn inside_mut(self, tree: &mut NodeTree) -> Option<&mut AnyNode> {
         tree.get_mut(self)
     }
 }
@@ -35,11 +46,11 @@ impl NodeTree {
         }
     }
 
-    pub fn get(&self, node: NodeID) -> Option<&Node> {
+    pub fn get(&self, node: NodeID) -> Option<&AnyNode> {
         self.nodes.get(&node)
     }
 
-    pub fn get_mut(&mut self, node: NodeID) -> Option<&mut Node> {
+    pub fn get_mut(&mut self, node: NodeID) -> Option<&mut AnyNode> {
         self.nodes.get_mut(&node)
     }
 
@@ -51,7 +62,7 @@ impl NodeTree {
         (&self.get(parent)).map(|parent_node| &parent_node.children)
     }
 
-    pub fn add_node(&mut self, node: Node) -> Option<NodeID> {
+    pub fn add_node(&mut self, node: AnyNode) -> Option<NodeID> {
         let id = self.generate_id();
         self.nodes.insert(id, node)?;
 
@@ -62,5 +73,11 @@ impl NodeTree {
         parent.inside_mut(self)?.children.push(child);
 
         Some(())
+    }
+}
+
+impl<'a> NodeContext<'a> {
+    pub fn node(self) -> Option<&'a AnyNode> {
+        self.tree.get(self.id)
     }
 }
