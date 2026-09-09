@@ -1,3 +1,7 @@
+use image::{GenericImageView, ImageError, ImageReader, Rgba};
+
+use crate::graphics::image::color::Color;
+
 pub mod color;
 pub mod draw;
 
@@ -7,7 +11,7 @@ pub mod draw;
 /// `Image` implements some basic drawing abilities, such as filling the
 ///  length with a `T` or drawing a `Shape` with `ShapeDrawOptions`.
 #[derive(Clone)]
-pub struct Image<T: Clone + Copy> {
+pub struct Image<T: Clone + Copy + Sized> {
     pub width: usize,
     pub height: usize,
     pub inner: Vec<T>,
@@ -65,6 +69,16 @@ impl<T: Clone + Copy> Image<T> {
 
         Ok(())
     }
+
+    pub fn blit(&self, dist: &mut Self, x: i64, y: i64) -> Result<(), ()> {
+        let dist_start = dist.index(x, y)?;
+        let source_length_max = (dist.width * dist.height) - dist_start;
+
+        dist.inner
+            .splice(dist_start..source_length_max, self.inner.clone());
+
+        Ok(())
+    }
 }
 
 impl<T: PartialOrd + Copy + Clone> Image<T> {
@@ -88,5 +102,36 @@ impl<T: PartialOrd + Copy + Clone> Image<T> {
         } else {
             Ok(false)
         }
+    }
+}
+
+// =============
+// image loading
+// =============
+
+pub fn load_image<T: Copy + From<Rgba<u8>>>(path: String) -> Result<Image<T>, ImageError> {
+    let file_image = ImageReader::open(path)?.decode()?;
+
+    let mut out_image = Image {
+        width: file_image.width() as usize,
+        height: file_image.height() as usize,
+        inner: Vec::new(),
+    };
+
+    // FIXME !
+    // this assumes that the pixel format is
+    // magically oriented in the same way as our
+    // pixel buffer
+
+    for pixel in file_image.pixels() {
+        out_image.inner.push(pixel.2.into());
+    }
+
+    Ok(out_image)
+}
+
+impl From<Rgba<u8>> for Color {
+    fn from(value: Rgba<u8>) -> Self {
+        Color::rgb_255u(value.0[0] as u32, value.0[1] as u32, value.0[2] as u32)
     }
 }

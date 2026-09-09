@@ -1,3 +1,5 @@
+pub mod arena;
+
 pub enum Completion {
     Unfinished,
     Finished,
