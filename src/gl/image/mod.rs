@@ -1,6 +1,6 @@
 use image::{GenericImageView, ImageError, ImageReader, Rgba};
 
-use crate::graphics::image::color::Color;
+use crate::gl::image::color::Color;
 
 pub mod color;
 pub mod draw;

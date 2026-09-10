@@ -1,7 +1,7 @@
 use std::ops::Mul;
 
 use crate::{
-    graphics::shape::raster_over_triangle_area_by_edges,
+    gl::shape::raster_over_triangle_area_by_edges,
     math::{
         matrix::Mat4,
         shape::Triangle2D,

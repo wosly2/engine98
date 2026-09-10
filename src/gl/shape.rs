@@ -1,5 +1,5 @@
-use crate::graphics::image::color::Color;
-use crate::graphics::shape::LineStepError::{Finished, InfinitePoints};
+use crate::gl::image::color::Color;
+use crate::gl::shape::LineStepError::{Finished, InfinitePoints};
 use crate::math::shape::{Line2D, Triangle2D};
 use crate::util;
 

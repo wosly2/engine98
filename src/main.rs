@@ -1,13 +1,13 @@
 #![allow(dead_code)]
 
-mod graphics;
+mod gl;
 mod math;
 mod scene;
 mod util;
 
 use crate::{
-    graphics::image::{Image, color::Color},
-    graphics::{
+    gl::image::{Image, color::Color},
+    gl::{
         math::{bary_as_vec, perspective},
         model::{ConstModel, Model, TriangleIterator},
     },
@@ -100,7 +100,7 @@ fn main() {
 
             let depths = tri_proj.z_values().map(|z| 1. / z);
 
-            _ = graphics::shape::raster_over_triangle_area_by_edges(tri_screen, |x, y| {
+            _ = gl::shape::raster_over_triangle_area_by_edges(tri_screen, |x, y| {
                 if color_buffer.is_on_image(x, y) {
                     let bary = tri_screen.barycentric_coord_double_area(
                         Vec2::new([x as f64, y as f64]),

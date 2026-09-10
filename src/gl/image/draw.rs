@@ -1,6 +1,6 @@
 use crate::{
-    graphics::image::{Image, color::Color},
-    graphics::shape::{ShapeDrawOptions, raster_over_line},
+    gl::image::{Image, color::Color},
+    gl::shape::{ShapeDrawOptions, raster_over_line},
     math::{
         shape::{Line2D, Rect2D, Shape2D, Triangle2D},
         vector::Vec2,
