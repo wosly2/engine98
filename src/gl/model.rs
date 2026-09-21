@@ -47,9 +47,9 @@ impl Model {
     pub fn raster_over_triangles<Ft, Fp>(&self, mut triangle_fun: Ft, mut pixel_fun: Fp)
     where
         Ft: FnMut(&(Vec4, Vec4, Vec4), &Triangle2D),
-        Fp: FnMut(i64, i64),
+        Fp: FnMut(i32, i32),
     {
-        for triangle_4d in TriangleIterator::from(self) {
+        for (triangle_4d, _, _) in TriangleIterator::from(self) {
             let triangle_2d = Triangle2D {
                 a: triangle_4d.0.xyz().xy(),
                 b: triangle_4d.1.xyz().xy(),
@@ -75,7 +75,7 @@ impl<'a> From<&'a Model> for TriangleIterator<'a> {
 }
 
 impl<'a> Iterator for TriangleIterator<'a> {
-    type Item = (Vec4, Vec4, Vec4);
+    type Item = ((Vec4, Vec4, Vec4), (Vec4, Vec4, Vec4), (Vec2, Vec2, Vec2));
 
     fn next(&mut self) -> Option<Self::Item> {
         self.triangle_index += 1;
@@ -83,9 +83,21 @@ impl<'a> Iterator for TriangleIterator<'a> {
         if self.triangle_index - 1 < self.model.mesh.len() {
             let tup = self.model.mesh[self.triangle_index - 1];
             return Some((
-                self.model.points[tup[0].0],
-                self.model.points[tup[1].0],
-                self.model.points[tup[2].0],
+                (
+                    self.model.points[tup[0].0],
+                    self.model.points[tup[1].0],
+                    self.model.points[tup[2].0],
+                ),
+                (
+                    self.model.normals[tup[0].1],
+                    self.model.normals[tup[1].1],
+                    self.model.normals[tup[2].1],
+                ),
+                (
+                    self.model.uvs[tup[0].2],
+                    self.model.uvs[tup[1].2],
+                    self.model.uvs[tup[2].2],
+                ),
             ));
         } else {
             return None;
@@ -138,18 +150,18 @@ impl From<ConstModel> for Model {
 impl ConstModel {
     pub const CUBE: Self = Self {
         mesh: &[
-            [(6, 6, 0), (4, 4, 0), (0, 0, 0)],
-            [(6, 6, 0), (0, 0, 0), (2, 2, 0)],
-            [(7, 7, 0), (3, 3, 0), (1, 1, 0)],
-            [(7, 7, 0), (1, 1, 0), (5, 5, 0)],
-            [(3, 3, 0), (2, 2, 0), (0, 0, 0)],
-            [(3, 3, 0), (0, 0, 0), (1, 1, 0)],
-            [(1, 1, 0), (0, 0, 0), (4, 4, 0)],
-            [(1, 1, 0), (4, 4, 0), (5, 5, 0)],
-            [(5, 5, 0), (4, 4, 0), (6, 6, 0)],
-            [(5, 5, 0), (6, 6, 0), (7, 7, 0)],
-            [(7, 7, 0), (6, 6, 0), (2, 2, 0)],
-            [(7, 7, 0), (2, 2, 0), (3, 3, 0)],
+            [(6, 6, 0), (4, 4, 1), (0, 0, 2)],
+            [(6, 6, 0), (0, 0, 2), (2, 2, 3)],
+            [(7, 7, 4), (3, 3, 5), (1, 1, 6)],
+            [(7, 7, 4), (1, 1, 6), (5, 5, 7)],
+            [(3, 3, 8), (2, 2, 9), (0, 0, 10)],
+            [(3, 3, 8), (0, 0, 10), (1, 1, 11)],
+            [(1, 1, 12), (0, 0, 13), (4, 4, 14)],
+            [(1, 1, 12), (4, 4, 14), (5, 5, 15)],
+            [(5, 5, 16), (4, 4, 17), (6, 6, 18)],
+            [(5, 5, 16), (6, 6, 18), (7, 7, 19)],
+            [(7, 7, 20), (6, 6, 21), (2, 2, 22)],
+            [(7, 7, 20), (2, 2, 22), (3, 3, 23)],
         ],
         points: &[
             Vec3::new([1., 1., 1.]).homog(1.),
@@ -171,6 +183,31 @@ impl ConstModel {
             Vec3::new([-1., -1., 1.]).homog(0.),
             Vec3::new([-1., -1., -1.]).homog(0.),
         ],
-        uvs: &[Vec2::ZERO],
+        uvs: &[
+            Vec2::new([0., 0.]),
+            Vec2::new([1., 0.]),
+            Vec2::new([0., 1.]),
+            Vec2::new([1., 1.]),
+            Vec2::new([0., 0.]),
+            Vec2::new([1., 0.]),
+            Vec2::new([0., 1.]),
+            Vec2::new([1., 1.]),
+            Vec2::new([0., 0.]),
+            Vec2::new([1., 0.]),
+            Vec2::new([0., 1.]),
+            Vec2::new([1., 1.]),
+            Vec2::new([0., 0.]),
+            Vec2::new([1., 0.]),
+            Vec2::new([0., 1.]),
+            Vec2::new([1., 1.]),
+            Vec2::new([0., 0.]),
+            Vec2::new([1., 0.]),
+            Vec2::new([0., 1.]),
+            Vec2::new([1., 1.]),
+            Vec2::new([0., 0.]),
+            Vec2::new([1., 0.]),
+            Vec2::new([0., 1.]),
+            Vec2::new([1., 1.]),
+        ],
     };
 }

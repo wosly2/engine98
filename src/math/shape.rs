@@ -69,9 +69,9 @@ impl Triangle2D {
         double_area: Scalar,
     ) -> (Scalar, Scalar, Scalar) {
         (
-            (Triangle2D::new(self.b, self.c, point).double_area() / double_area).abs(),
-            (Triangle2D::new(self.a, self.b, point).double_area() / double_area).abs(),
-            (Triangle2D::new(self.a, self.c, point).double_area() / double_area).abs(),
+            (Triangle2D::new(self.b, self.c, point).double_area() / double_area),
+            (Triangle2D::new(self.c, self.a, point).double_area() / double_area),
+            (Triangle2D::new(self.a, self.b, point).double_area() / double_area),
         )
     }
 }

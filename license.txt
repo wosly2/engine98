@@ -1,0 +1,13 @@
+==== CREDITS ====
+
+TypeMono (./assets/fonts/typemono.png):
+    TypeMono is an original pixel-art font
+    based closely on Select Mono Italic by
+    Michael McMaster:
+
+    https://michaeljmcmaster.com/selectmono.html
+
+    Select Mono Italic is published under
+    the SIL Open Font License v1.1:
+
+    https://openfontlicense.org/

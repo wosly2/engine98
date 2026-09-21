@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use crate::math::{
     matrix::{Mat4, Order},
     vector::Vec3,
@@ -12,7 +10,7 @@ pub struct Transform {
     bases: Mat4,
 }
 
-pub struct Transformed<T: Any> {
+pub struct Transformed<T> {
     pub value: T,
     pub transform: Transform,
 }

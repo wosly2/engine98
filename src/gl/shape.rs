@@ -33,7 +33,7 @@ impl Default for ShapeDrawOptions {
 /// its coordinate.
 pub fn raster_over_line<F>(line: Line2D, mut f: F) -> Result<(), LineStepError>
 where
-    F: FnMut(i64, i64),
+    F: FnMut(i32, i32),
 {
     let stepper = LineStepper::new(line)?;
 
@@ -50,15 +50,15 @@ where
 
 #[derive(Clone, Copy)]
 pub struct LineStepper {
-    x: i64,
-    y: i64,
-    x1: i64,
-    y1: i64,
-    error: i64,
-    dx: i64,
-    sx: i64,
-    dy: i64,
-    sy: i64,
+    x: i32,
+    y: i32,
+    x1: i32,
+    y1: i32,
+    error: i32,
+    dx: i32,
+    sx: i32,
+    dy: i32,
+    sy: i32,
     finished: bool,
     stopped_because: Option<LineStepError>,
 }
@@ -93,10 +93,10 @@ impl LineStepper {
         }
 
         let (x0, y0, x1, y1) = (
-            line.a.x() as i64,
-            line.a.y() as i64,
-            line.b.x() as i64,
-            line.b.y() as i64,
+            line.a.x() as i32,
+            line.a.y() as i32,
+            line.b.x() as i32,
+            line.b.y() as i32,
         );
 
         let dx = (x1 - x0).abs();
@@ -154,7 +154,7 @@ impl LineStepper {
         Ok(())
     }
 
-    pub fn xy(&self) -> (i64, i64) {
+    pub fn xy(&self) -> (i32, i32) {
         (self.x, self.y)
     }
 
@@ -175,7 +175,7 @@ impl LineStepper {
 }
 
 impl Iterator for LineStepper {
-    type Item = (i64, i64);
+    type Item = (i32, i32);
 
     fn next(&mut self) -> Option<Self::Item> {
         let xy = self.xy();
@@ -202,7 +202,7 @@ impl EdgeStepper {
         &self.stepper
     }
 
-    pub fn xy(&self) -> (i64, i64) {
+    pub fn xy(&self) -> (i32, i32) {
         self.stepper.xy()
     }
 
@@ -223,7 +223,7 @@ impl EdgeStepper {
 }
 
 impl Iterator for EdgeStepper {
-    type Item = (i64, i64);
+    type Item = (i32, i32);
 
     fn next(&mut self) -> Option<Self::Item> {
         let xy = self.stepper.xy();
@@ -240,7 +240,7 @@ pub fn raster_over_triangle_area_by_edges<F>(
     mut f: F,
 ) -> Result<(), LineStepError>
 where
-    F: FnMut(i64, i64),
+    F: FnMut(i32, i32),
 {
     // our current goal is to determine which line spans the full Y
     // displacement of the two others. we do this by sorting the lines
@@ -299,22 +299,22 @@ where
 /// raster coordinates. `raster_line_runs` returns the following data in tuple form:
 /// ```
 /// (
-///     i64,     // starting Y coordinate of given line
-///     i64,     // sign of X direction
-///     i64,     // sign of Y direction
+///     i32,     // starting Y coordinate of given line
+///     i32,     // sign of X direction
+///     i32,     // sign of Y direction
 ///     Vec<(
-///         i64, // X value where Y value is starting Y + index here * sign of Y direction
-///         i64, // Length of contininuous X values in the direction of sign of X direction
+///         i32, // X value where Y value is starting Y + index here * sign of Y direction
+///         i32, // Length of contininuous X values in the direction of sign of X direction
 ///     )>,
 /// )
 /// ```
 ///
 /// `raster_line_runs` uses `over_line` to obtain its raster coordinates, and thus
 /// wraps its output tuple in a `Result`, propagating any error from `over_line`.
-pub fn raster_line_runs(line: Line2D) -> Result<(i64, i64, i64, Vec<(i64, i64)>), LineStepError> {
+pub fn raster_line_runs(line: Line2D) -> Result<(i32, i32, i32, Vec<(i32, i32)>), LineStepError> {
     let mut x_values = Vec::new();
 
-    let mut previous_y = line.a.y() as i64 + 1; // any value other than y, so first check works
+    let mut previous_y = line.a.y() as i32 + 1; // any value other than y, so first check works
 
     let mut i = 0;
 
@@ -338,6 +338,6 @@ pub fn raster_line_runs(line: Line2D) -> Result<(i64, i64, i64, Vec<(i64, i64)>)
         let sx = if line.a.x() < line.b.x() { 1 } else { -1 };
         let sy = if line.a.y() < line.b.y() { 1 } else { -1 };
 
-        (line.a.y() as i64, sx, sy, x_values)
+        (line.a.y() as i32, sx, sy, x_values)
     })
 }

@@ -1,6 +1,8 @@
+use std::cmp::min;
+
 use image::{GenericImageView, ImageError, ImageReader, Rgba};
 
-use crate::gl::image::color::Color;
+use crate::{gl::image::color::Color, util::is_norm};
 
 pub mod color;
 pub mod draw;
@@ -16,6 +18,8 @@ pub struct Image<T: Clone + Copy + Sized> {
     pub height: usize,
     pub inner: Vec<T>,
 }
+
+pub type Sampling<T> = fn(&Image<T>, norm_x: f64, norm_y: f64) -> Option<T>;
 
 impl<T: Clone + Copy> Image<T> {
     pub fn new(width: usize, height: usize, default: T) -> Self {
@@ -33,51 +37,91 @@ impl<T: Clone + Copy> Image<T> {
 
     /// Check if a given point is within the bounds of
     /// an `Image`
-    pub fn is_on_image(&self, x: i64, y: i64) -> bool {
-        !(0 > x || x >= self.width as i64 || 0 > y || y >= self.height as i64)
+    pub fn is_on_image(&self, x: i32, y: i32) -> bool {
+        !(0 > x || x >= self.width as i32 || 0 > y || y >= self.height as i32)
+    }
+
+    pub fn index_unchecked(&self, x: i32, y: i32) -> usize {
+        (self.height - 1 - y as usize) * self.width + x as usize
     }
 
     /// Return the corresponding index for a point that exists in an `Image`.
     /// Images have increasing Y and decreasing index from bottom -> top.
-    pub fn index(&self, x: i64, y: i64) -> Result<usize, ()> {
-        let (x, y) = self
-            .is_on_image(x, y)
-            .then(|| (x as usize, y as usize))
-            .ok_or(())?;
-
-        Ok((self.height - 1 - y) * self.width + x)
+    pub fn index(&self, x: i32, y: i32) -> Option<usize> {
+        if self.is_on_image(x, y) {
+            Some(self.index_unchecked(x, y))
+        } else {
+            None
+        }
     }
 
     /// Clamp a given point so that neither X nor Y component
     /// is outside of the bounds of an `Image`
-    pub fn clamp(&self, x: i64, y: i64) -> (i64, i64) {
+    pub fn clamp(&self, x: i32, y: i32) -> (i32, i32) {
         (
-            x.clamp(0, self.width as i64 - 1),
-            y.clamp(0, self.height as i64 - 1),
+            x.clamp(0, self.width as i32 - 1),
+            y.clamp(0, self.height as i32 - 1),
         )
     }
 
     /// Return the value of a pixel that exists in an `Image`
-    pub fn get(&self, x: i64, y: i64) -> Result<T, ()> {
-        Ok(self.inner[self.index(x, y)?])
+    pub fn get(&self, x: i32, y: i32) -> Option<T> {
+        Some(self.inner[self.index(x, y)?])
     }
 
     /// Set the value of a point that exists inside an `Image`.
-    pub fn set(&mut self, x: i64, y: i64, value: T) -> Result<(), ()> {
+    pub fn set(&mut self, x: i32, y: i32, value: T) -> Option<()> {
         let index = self.index(x, y)?;
         self.inner[index] = value;
 
-        Ok(())
+        Some(())
     }
 
-    pub fn blit(&self, dist: &mut Self, x: i64, y: i64) -> Result<(), ()> {
-        let dist_start = dist.index(x, y)?;
-        let source_length_max = (dist.width * dist.height) - dist_start;
+    pub fn blit_to(&self, dest: &mut Self, dest_x: usize, dest_y: usize) {
+        if dest_x >= dest.width || dest_y >= dest.height {
+            return;
+        }
 
-        dist.inner
-            .splice(dist_start..source_length_max, self.inner.clone());
+        let copy_width = min(self.width, dest.width - dest_x);
 
-        Ok(())
+        for src_y_offset in 0..min(self.height, dest.height - dest_y) {
+            let dest_index = dest.index_unchecked(dest_x as i32, (dest_y + src_y_offset) as i32);
+            let src_index = self.index_unchecked(0, src_y_offset as i32);
+
+            let src_row = &self.inner[src_index..src_index + copy_width];
+            let dest_row = &mut dest.inner[dest_index..dest_index + copy_width];
+
+            dest_row.copy_from_slice(src_row);
+        }
+    }
+
+    pub fn sampled_nearest(&self, norm_x: f64, norm_y: f64) -> Option<T> {
+        if !is_norm(norm_x) || !is_norm(norm_y) {
+            return None;
+        }
+
+        let x = (norm_x * (self.width - 1) as f64).round() as i32;
+        let y = (norm_y * (self.height - 1) as f64).round() as i32;
+
+        Some(self.get(x, y)?)
+    }
+
+    /// TODO !
+    #[allow(unused)]
+    pub fn scaled(&self, new_width: usize, new_height: usize, sample: Sampling<T>) -> Option<Self> {
+        let mut scaled = Self {
+            width: new_width,
+            height: new_height,
+            inner: Vec::with_capacity(new_width * new_height),
+        };
+
+        for x in 0..new_width {
+            for y in 0..new_height {
+                scaled.inner.push(sample(self, 0., 0.)?);
+            }
+        }
+
+        unimplemented!();
     }
 }
 
@@ -86,18 +130,18 @@ impl<T: PartialOrd + Copy + Clone> Image<T> {
     /// provided value was greater than the existing pixel value.
     /// Returns a boolean describing whether the provided value
     /// was greater than the existing.
-    pub fn set_if_greater(&mut self, x: i64, y: i64, value: T) -> Result<bool, ()> {
-        if value > self.get(x, y)? {
-            self.set(x, y, value)?;
+    pub fn set_if_greater(&mut self, x: i32, y: i32, value: T) -> Result<bool, ()> {
+        if value > self.get(x, y).ok_or(())? {
+            self.set(x, y, value).ok_or(())?;
             Ok(true)
         } else {
             Ok(false)
         }
     }
 
-    pub fn set_if_less(&mut self, x: i64, y: i64, value: T) -> Result<bool, ()> {
-        if value < self.get(x, y)? {
-            self.set(x, y, value)?;
+    pub fn set_if_less(&mut self, x: i32, y: i32, value: T) -> Result<bool, ()> {
+        if value < self.get(x, y).ok_or(())? {
+            self.set(x, y, value).ok_or(())?;
             Ok(true)
         } else {
             Ok(false)
