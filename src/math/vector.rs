@@ -192,7 +192,7 @@ macro_rules! vector_accessors {
 
 vector_accessors!(Vec2, x: 0, y: 1);
 vector_accessors!(Vec3, x: 0, y: 1, z: 2);
-vector_accessors!(Vec4, x: 0, y: 1, z: 2, w: 2);
+vector_accessors!(Vec4, x: 0, y: 1, z: 2, w: 3);
 
 pub type Vec2 = Vecn<2>;
 pub type Vec3 = Vecn<3>;

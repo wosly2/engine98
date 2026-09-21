@@ -98,7 +98,7 @@ macro_rules! matrix_accessors {
 
 matrix_accessors!(Mat2, Vec2, i: 0, j: 1);
 matrix_accessors!(Mat3, Vec3, i: 0, j: 1, k: 2);
-matrix_accessors!(Mat4, Vec4, i: 0, j: 1, k: 2, w: 2);
+matrix_accessors!(Mat4, Vec4, i: 0, j: 1, k: 2, w: 3);
 
 // Type Aliases!
 
